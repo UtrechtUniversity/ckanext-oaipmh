@@ -28,6 +28,10 @@ class MetadataReader(object):
         xpath_evaluator = etree.XPathEvaluator(element,
                                                namespaces=self._namespaces)
 
+#        xmlstr = etree.tostring(element, encoding='utf8', method='xml')
+#        raise Error(xmlstr)
+
+
         e = xpath_evaluator.evaluate
         # now extra field info according to xpath expr
         for field_name, (field_type, expr) in list(self._fields.items()):
@@ -47,6 +51,34 @@ class MetadataReader(object):
                 raise Error("Unknown field type: %s" % field_type)
             map[field_name] = value
         return common.Metadata(element, map)
+
+
+datacite_reader = MetadataReader(
+    fields={
+        'title':             ('textList', 'default:resource/default:titles/default:title/text()'),  # noqa
+        'description':       ('textList', 'default:resource/default:descriptions/default:description/text()'),  # noqa
+        'creator':           ('textList', 'default:resource/default:creators/default:creator/default:creatorName/text()'),  # noqa
+        'rights':            ('textList', 'default:resource/default:rightsList/default:rights/text()'),  # noqa
+	'subjects':          ('textList', 'default:resource/default:subjects/default:subject/text()'), 
+        #'gfz-tags':          ('textList', 'default:resource/default:subjects/default:subject/text()'),
+        
+	#'subject':          ('textList', 'oai_dc:dc/dc:subject/text()'),  # noqa
+        #'publisher':        ('textList', 'oai_dc:dc/dc:publisher/text()'),  # noqa
+        #'maintainer_email': ('textList', 'oai_dc:dc/oai:maintainer_email/text()'),  # noqa
+        #'contributor':      ('textList', 'oai_dc:dc/dc:contributor/text()'),  # noqa
+        #'date':             ('textList', 'oai_dc:dc/dc:date/text()'),  # noqa
+        #'type':             ('textList', 'oai_dc:dc/dc:type/text()'),  # noqa
+        #'format':           ('textList', 'oai_dc:dc/dc:format/text()'),  # noqa
+        #'identifier':       ('textList', 'oai_dc:dc/dc:identifier/text()'),  # noqa
+        #'source':           ('textList', 'oai_dc:dc/dc:source/text()'),  # noqa
+        #'language':         ('textList', 'oai_dc:dc/dc:language/text()'),  # noqa
+        #'relation':         ('textList', 'oai_dc:dc/dc:relation/text()'),  # noqa
+        #'coverage':         ('textList', 'oai_dc:dc/dc:coverage/text()'),  # noqa
+    },
+    namespaces={
+    'default': 'http://datacite.org/schema/kernel-4'
+    }
+)
 
 
 oai_ddi_reader = MetadataReader(

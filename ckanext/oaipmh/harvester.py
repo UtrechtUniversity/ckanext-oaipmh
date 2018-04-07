@@ -17,6 +17,7 @@ from oaipmh.metadata import MetadataRegistry
 from metadata import oai_ddi_reader
 from metadata import oai_dc_reader
 from metadata import dif_reader, dif_reader2
+from metadata import datacite_reader
 from pprint import pprint
 
 import traceback
@@ -54,7 +55,7 @@ class OaipmhHarvester(HarvesterBase):
         :param harvest_job: HarvestJob object
         :returns: A list of HarvestObject ids
         '''
-        log.debug("in gather stage: %s" % harvest_job.source.url)
+        log.debug("HDR in gather stage: %s" % harvest_job.source.url)
         try:
             harvest_obj_ids = []
             registry = self._create_metadata_registry()
@@ -73,6 +74,7 @@ class OaipmhHarvester(HarvesterBase):
                     job=harvest_job
                 )
                 harvest_obj.save()
+		log.debug("HDR in gather stage -harvest_obj.id: %s" % harvest_obj.id)
                 harvest_obj_ids.append(harvest_obj.id)
         except urllib2.HTTPError, e:
             log.exception(
@@ -125,6 +127,8 @@ class OaipmhHarvester(HarvesterBase):
         registry.registerReader('oai_ddi', oai_ddi_reader)
         # TODO: Change back?
         registry.registerReader('dif', dif_reader2)
+	# HDR
+        registry.registerReader('datacite', datacite_reader)
         return registry
 
     def _set_config(self, source_config):
@@ -167,6 +171,8 @@ class OaipmhHarvester(HarvesterBase):
         '''
         #  log.debug("in fetch stage: %s" % harvest_object.guid)
 
+        log.debug("HDR: Fetch url %s" % harvest_object.job.source.url)
+
         try:
             self._set_config(harvest_object.job.source.config)
             registry = self._create_metadata_registry()
@@ -178,10 +184,10 @@ class OaipmhHarvester(HarvesterBase):
             )
             record = None
             try:
-                #  log.debug(
-                    #  "Load %s with metadata prefix '%s'" %
-                    #  (harvest_object.guid, self.md_format)
-                #  )
+                log.debug(
+                    "HDR Load %s with metadata prefix '%s'" %
+                    (harvest_object.guid, self.md_format)
+                )
 
                 self._before_record_fetch(harvest_object)
 
@@ -198,8 +204,8 @@ class OaipmhHarvester(HarvesterBase):
                 return False
 
             header, metadata, _ = record
-            #  log.debug('metadata %s' % metadata)
-            #  log.debug('header %s' % header)
+            log.debug('metadata %s' % metadata)
+            log.debug('header %s' % header)
 
             try:
                 metadata_modified = header.datestamp().isoformat()
@@ -214,6 +220,7 @@ class OaipmhHarvester(HarvesterBase):
                     content_dict['metadata_modified'] = metadata_modified
                 #  log.debug(content_dict)
                 content = json.dumps(content_dict)
+                log.debug(content)
             except:
                 log.exception('Dumping the metadata failed!')
                 self._save_object_error(
@@ -274,14 +281,23 @@ class OaipmhHarvester(HarvesterBase):
             }
 
             package_dict = {}
+
+
+            log.error(harvest_object.content)
             content = json.loads(harvest_object.content)
+            log.error(content)
+
 
             package_dict['id'] = munge_title_to_name(harvest_object.guid)
             package_dict['name'] = package_dict['id']
 
             mapping = self._get_mapping()
 
+	    # HIER ALLEEN ENKELVOUDIGE VELDEN!!
+	    # DE MAPPING GAAT ALLEEN OVER ENKELE VELDEN
             for ckan_field, oai_field in mapping.iteritems():
+                log.debug('HDR ckan_field %s' % ckan_field)
+                log.debug('HDR oai_field %s' % oai_field)
                 try:
                     if ckan_field == 'maintainer_email' and '@' not in content[oai_field][0]:
                         # Email not available.
@@ -293,9 +309,15 @@ class OaipmhHarvester(HarvesterBase):
                 except (IndexError, KeyError):
                     continue
 
+            # HdR from here package_dict has CKAN - keys
+	    # conntent is still based on json response -> i.e. GFZ
+	    # ------------------------------------------------------------
+
+
             # add author
             # TODO: Remove Dataset_Creator and/or Dataset_Publisher as it is redundant information
-            package_dict['author'] = self._extract_author(content)
+            package_dict['author'] =  ', HdR: '.join(content['creator'])
+#	    package_dict['author'] = 'HdR'	
 
             # add owner_org
             source_dataset = get_action('package_show')(
@@ -305,49 +327,80 @@ class OaipmhHarvester(HarvesterBase):
             owner_org = source_dataset.get('owner_org')
             package_dict['owner_org'] = owner_org
 
-            # add license
-            package_dict['license_id'] = self._extract_license_id(content)
+#            # add license
+#            package_dict['license_id'] = self._extract_license_id(content)
 
             # TODO: Need to map to CKAN author field
-            formats = self._extract_formats(content)
-            package_dict['formats'] = formats
+            # formats = self._extract_formats(content)
+            package_dict['formats'] = 'datacite' #formats
 
             # add resources
             # TODO: Make list
-            url = self._get_possible_resource(harvest_object, content)
-            package_dict['resources'] = self._extract_resources(url, content)
+            # url = self._get_possible_resource(harvest_object, content)
+            # package_dict['resources'] = self._extract_resources(url, content)
 
             # extract tags from 'type' and 'subject' field
             # everything else is added as extra field
-            tags, extras = self._extract_tags_and_extras(content)
-            package_dict['tags'] = tags
-            package_dict['extras'] = extras
+            # tags, extras = self._extract_tags_and_extras(content)
+            # HdR package_dict['tags'] = tags
+            # HdR package_dict['extras'] = extras
 
             # groups aka projects
-            groups = []
+            groups = [] 
 
             # create group based on set
-            if content['set_spec']:
-                #  log.debug('set_spec: %s' % content['set_spec'])
+#            if content['set_spec']:
+#                log.debug('set_spec: %s' % content['set_spec'])
+#                groups.extend(
+#                    self._find_or_create_groups(
+#                        content['set_spec'],
+#                        context
+#                    )
+#                )
+#            # add groups from content
+#            groups.extend(
+#                self._extract_groups(content, context)
+#            )
+
+
+
+#            # create group based on set
+#            if content['groups']:
+#                #  log.debug('groups: %s' % content['groups'])
+#                groups.extend(
+#                    self._find_or_create_groups(
+#                        content['groups'],
+#                        context
+#                    )
+#                )
+
+            # create groups based on subjects
+            if content['subjects']:
+                log.debug('subjects: %s' % content['subjects'])
                 groups.extend(
                     self._find_or_create_groups(
-                        content['set_spec'],
+                        content['subjects'],
                         context
                     )
                 )
 
-            # add groups from content
-            groups.extend(
-                self._extract_groups(content, context)
-            )
+	    # add the groups that were found to the package
+	    package_dict['groups'] = groups
 
-            package_dict['groups'] = groups
+#            # extract tags from 'type' and 'subject' field
+#            # everything else is added as extra field
+            tags, extras =  self._extract_tags_and_extras(content)
+	    # tags, extras = content['gfz-tags']	
+            package_dict['tags'] = tags
+            package_dict['extras'] = extras
+		
 
-            # allow sub-classes to add additional fields
-            package_dict = self._extract_additional_fields(
-                content,
-                package_dict
-            )
+# HIER GEBEURT NOG NIKS
+#            # allow sub-classes to add additional fields
+#            package_dict = self._extract_additional_fields(
+#                content,
+#                package_dict
+#            )
 
 
             # log.debug('Create/update package using dict: %s' % package_dict)
@@ -355,6 +408,7 @@ class OaipmhHarvester(HarvesterBase):
                 package_dict,
                 harvest_object
             )
+
 
             Session.commit()
 
@@ -368,7 +422,7 @@ class OaipmhHarvester(HarvesterBase):
             return False
         return True
 
-    def _get_mapping(self):
+    def _get_mapping(self): # ALLEEN ENKELVOUDIGE VELDEN
         if self.md_format == 'dif':
             # CKAN fields explained here:
             # http://docs.ckan.org/en/ckan-1.7.4/domain-model-dataset.html
@@ -392,24 +446,27 @@ class OaipmhHarvester(HarvesterBase):
             return {
                 'title': 'title',
                 'notes': 'description',
-                'maintainer': 'publisher',
-                'maintainer_email': 'maintainer_email',
-                'url': 'source',
+		#'author': 'creator', # is a multi-field -> requires different handling
+		'license_id': 'rights',
+		#'groups': 'subjects',
+                #'maintainer': 'publisher',
+                #'maintainer_email': 'maintainer_email',
+                #'url': 'source',
             }
 
-    def _extract_author(self, content):
-        if self.md_format == 'dif':
-            dataset_creator = ', '.join(content['Data_Set_Citation/Dataset_Creator'])
-            # TODO: Remove publisher? Is not part of mapping...
-            dataset_publisher = ', '.join(content['Data_Set_Citation/Dataset_Publisher'])
-            if 'not available' not in dataset_creator.lower():
-                return dataset_creator
-            elif 'not available' not in dataset_publisher.lower():
-                return dataset_publisher
-            else:
-                return 'Not available'
-        else:
-            return ', '.join(content['creator'])
+#    def _extract_author(self, content):
+#        if self.md_format == 'dif':
+#            dataset_creator = ', '.join(content['Data_Set_Citation/Dataset_Creator'])
+#            # TODO: Remove publisher? Is not part of mapping...
+#            dataset_publisher = ', '.join(content['Data_Set_Citation/Dataset_Publisher'])
+#            if 'not available' not in dataset_creator.lower():
+#                return dataset_creator
+#            elif 'not available' not in dataset_publisher.lower():
+#                return dataset_publisher
+#            else:
+#                return 'Not available'
+#        else:
+#            return ', '.join(content['creator'])
 
     def _extract_license_id(self, content):
         if self.md_format == 'dif':
@@ -539,7 +596,7 @@ class OaipmhHarvester(HarvesterBase):
         return package_dict
 
     def _find_or_create_groups(self, groups, context):
-        #  log.debug('Group names: %s' % groups)
+        log.debug('Group names: %s' % groups)
         group_ids = []
         for group_name in groups:
             data_dict = {
