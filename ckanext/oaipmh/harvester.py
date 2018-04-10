@@ -220,7 +220,7 @@ class OaipmhHarvester(HarvesterBase):
                     content_dict['metadata_modified'] = metadata_modified
                 #  log.debug(content_dict)
                 content = json.dumps(content_dict)
-                log.debug(content)
+                # log.debug(content)
             except:
                 log.exception('Dumping the metadata failed!')
                 self._save_object_error(
@@ -283,9 +283,9 @@ class OaipmhHarvester(HarvesterBase):
             package_dict = {}
 
 
-            log.error(harvest_object.content)
+            # log.error(harvest_object.content)
             content = json.loads(harvest_object.content)
-            log.error(content)
+            # log.error(content)
 
 
             package_dict['id'] = munge_title_to_name(harvest_object.guid)
@@ -316,8 +316,7 @@ class OaipmhHarvester(HarvesterBase):
 
             # add author
             # TODO: Remove Dataset_Creator and/or Dataset_Publisher as it is redundant information
-            package_dict['author'] =  ', HdR: '.join(content['creator'])
-#	    package_dict['author'] = 'HdR'	
+            package_dict['author'] =  ', '.join(content['creator'])
 
             # add owner_org
             source_dataset = get_action('package_show')(
@@ -341,9 +340,9 @@ class OaipmhHarvester(HarvesterBase):
 
             # extract tags from 'type' and 'subject' field
             # everything else is added as extra field
-            # tags, extras = self._extract_tags_and_extras(content)
-            # HdR package_dict['tags'] = tags
-            # HdR package_dict['extras'] = extras
+            tags, extras = self._extract_tags_and_extras(content)
+            package_dict['tags'] = tags
+            package_dict['extras'] = extras
 
             # groups aka projects
             groups = [] 
@@ -357,7 +356,7 @@ class OaipmhHarvester(HarvesterBase):
 #                        context
 #                    )
 #                )
-#            # add groups from content
+            # add groups from content
 #            groups.extend(
 #                self._extract_groups(content, context)
 #            )
@@ -374,12 +373,20 @@ class OaipmhHarvester(HarvesterBase):
 #                    )
 #                )
 
-            # create groups based on subjects
-            if content['subjects']:
-                log.debug('subjects: %s' % content['subjects'])
+
+	
+	    subjects = []
+            
+            # hdrref
+	    # content['subjects'] = [] #['subject1', 'subject2']
+	    
+	    subjects = content['subjects']
+	    # create groups based on subjects
+            if subjects:
+                log.debug('subjects: %s' % subjects)
                 groups.extend(
                     self._find_or_create_groups(
-                        content['subjects'],
+                        subjects,
                         context
                     )
                 )
@@ -389,10 +396,46 @@ class OaipmhHarvester(HarvesterBase):
 
 #            # extract tags from 'type' and 'subject' field
 #            # everything else is added as extra field
-            tags, extras =  self._extract_tags_and_extras(content)
+            # tags, extras =  self._extract_tags_and_extras(content)
 	    # tags, extras = content['gfz-tags']	
-            package_dict['tags'] = tags
-            package_dict['extras'] = extras
+            package_dict['tags'] = content['subjects'] #['Tag1', 'Tag2'] #tags
+            
+	    extras = []
+	    #key ='key'
+            #value = 'value'
+            #for i in range(3):
+            #    extras.append((key + str(i),value + str(i)))
+            #    extras.append((key + str(i),value + 'secondkey' + str(i)))
+
+	    if content['doi']:
+                extras.append(('Source',content['doi'][0]))	
+            if content['created']:
+                extras.append(('Created',content['created'][0]))
+            if content['publicationYear']:
+                extras.append(('Year of publication',content['publicationYear'][0])) 
+	    if content['supplementTo']:
+		extras.append(('Is supplement to', content['supplementTo'][0]))
+	    if content['cites']:
+                extras.append(('Cites',content['cites'][0]))
+            if content['westBoundLongitude']:
+                extras.append(('geobox-wLong',content['westBoundLongitude'][0]))
+            if content['eastBoundLongitude']:
+                extras.append(('geobox-eLong',content['eastBoundLongitude'][0]))
+            if content['northBoundLatitude']:
+                extras.append(('geobox-nLat',content['northBoundLatitude'][0]))
+            if content['southBoundLatitude']:
+                extras.append(('geobox-sLat',content['southBoundLatitude'][0]))
+
+            if content['contact']:
+                extras.append(('Contact', content['contact'][0] + '-' + content['contactAffiliation'][0]))
+            if content['contactEmail']:
+                extras.append(('Contact email', 'blabla@blabla.com'))
+            if content['publisher']:
+                extras.append(('Publisher',content['publisher'][0]))
+
+            # test regel
+
+	    package_dict['extras'] = extras #['custom key1','custom val1'] #[] #['11', '22'] #extras
 		
 
 # HIER GEBEURT NOG NIKS
