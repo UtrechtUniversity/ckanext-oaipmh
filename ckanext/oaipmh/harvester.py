@@ -324,7 +324,20 @@ class OaipmhHarvester(HarvesterBase):
               {'id': harvest_object.source.id}
             )
             owner_org = source_dataset.get('owner_org')
-            package_dict['owner_org'] = owner_org
+            log.debug(owner_org)
+
+
+            organizations = ['TEST GFZ']
+
+	    if content['organizations']:
+            	organizations = content['organizations']
+            org_ids = self._find_or_create_organizations(
+                    organizations,
+                    context
+                )
+
+
+            package_dict['owner_org'] = org_ids[0]
 
 #            # add license
 #            package_dict['license_id'] = self._extract_license_id(content)
@@ -657,3 +670,26 @@ class OaipmhHarvester(HarvesterBase):
 
         #  log.debug('Group ids: %s' % group_ids)
         return group_ids
+
+    # return list of ids of found or added organizations
+    def _find_or_create_organizations(self, organizations, context):
+        log.debug('Organization names: %s' % organizations)
+        organization_ids = []
+        for organization_name in organizations:
+            data_dict = {
+                'id': organization_name,
+                'name': munge_title_to_name(organization_name),
+                'title': organization_name
+            }
+            try:
+                organization = get_action('organization_show')(context, data_dict)
+                #  log.info('found the organization: ' + organization['id'])
+            except:
+                organization = get_action('organization_create')(context, data_dict)
+                log.info('created the organization ' + organization['id'])
+            organization_ids.append(organization['id'])
+
+        log.debug('All organization ids: %s' % organization_ids)
+        return organization_ids
+
+
