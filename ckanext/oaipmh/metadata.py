@@ -61,7 +61,8 @@ datacite_reader = MetadataReader(
         'description':       ('textList', 'default:resource/default:descriptions/default:description/text()'),  # noqa
         'creator':           ('textList', 'default:resource/default:creators/default:creator/default:creatorName/text()'),  # noqa
         'rights':            ('textList', 'default:resource/default:rightsList/default:rights/text()'),  # noqa
-	'subjects':          ('textList', 'default:resource/default:subjects/default:subject/text()'),
+	'groups':            ('textList', 'default:resource/default:subjects/default:subject[text()="rock and melt physical properties" or text()="analogue models of geologic processes"]/text()'),
+        'tags':              ('textList', 'default:resource/default:subjects/default:subject[not(text()="rock and melt physical properties") and not(text()="analogue models of geologic processes")]/text()'),
         'doi':               ('textList', 'default:resource/default:identifier[@identifierType="DOI"]/text()'),
         'created':           ('textList', 'default:resource/default:dates/default:date[@dateType="Created"]/text()'),
         'publicationYear':   ('textList', 'default:resource/default:publicationYear/text()'), 

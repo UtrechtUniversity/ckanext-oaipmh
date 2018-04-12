@@ -380,7 +380,7 @@ class OaipmhHarvester(HarvesterBase):
             # hdrref
 	    # content['subjects'] = [] #['subject1', 'subject2']
 	    
-	    subjects = content['subjects']
+	    subjects = content['groups']
 	    # create groups based on subjects
             if subjects:
                 log.debug('subjects: %s' % subjects)
@@ -398,7 +398,7 @@ class OaipmhHarvester(HarvesterBase):
 #            # everything else is added as extra field
             # tags, extras =  self._extract_tags_and_extras(content)
 	    # tags, extras = content['gfz-tags']	
-            package_dict['tags'] = content['subjects'] #['Tag1', 'Tag2'] #tags
+            package_dict['tags'] = content['tags'] #['Tag1', 'Tag2'] #tags
             
 	    extras = []
 	    #key ='key'
