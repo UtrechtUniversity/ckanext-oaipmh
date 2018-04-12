@@ -76,7 +76,8 @@ datacite_reader = MetadataReader(
         'contactAffiliation':('textList', 'default:resource/default:contributors/default:contributor[@contributorType="ContactPerson"]/default:affiliation/text()'),
         'contactEmail':      ('textList', 'default:resource/default:titles/default:title/text()'), 
         'publisher':         ('textList', 'default:resource/default:publisher/text()'),
-        'organizations':     ('textList', 'default:resource/default:contributors/default:contributor[@contributorType="HostingInstitution"]/default:contributorName/text()')
+        'organizations':     ('textList', 'default:resource/default:contributors/default:contributor[@contributorType="HostingInstitution"]/default:contributorName/text()'),
+	'orgAffiliations':    ('textList', 'default:resource/default:contributors/default:contributor[@contributorType="HostingInstitution"]/default:affiliation/text()')
 
 
         #'gfz-tags':          ('textList', 'default:resource/default:subjects/default:subject/text()'),

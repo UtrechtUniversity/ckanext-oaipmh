@@ -327,10 +327,12 @@ class OaipmhHarvester(HarvesterBase):
             log.debug(owner_org)
 
 
-            organizations = ['TEST GFZ']
+            organizations = ['Unidentified'] # default
 
-	    if content['organizations']:
-            	organizations = content['organizations']
+	    if content['orgAffiliations']:
+            	organizations = content['orgAffiliations']
+	    elif content['organizations']:
+		 organizations = content['organizations']
             org_ids = self._find_or_create_organizations(
                     organizations,
                     context
