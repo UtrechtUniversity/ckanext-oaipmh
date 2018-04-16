@@ -1,7 +1,5 @@
 # CKAN Harvester for OAI-PMH
 
-[![Build Status](https://travis-ci.org/openresearchdata/ckanext-oaipmh.svg?branch=master)](https://travis-ci.org/openresearchdata/ckanext-oaipmh)
-
 ## Instructions
 
 ### Installation
