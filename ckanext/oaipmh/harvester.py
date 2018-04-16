@@ -298,6 +298,7 @@ class OaipmhHarvester(HarvesterBase):
             for ckan_field, oai_field in mapping.iteritems():
                 log.debug('HDR ckan_field %s' % ckan_field)
                 log.debug('HDR oai_field %s' % oai_field)
+		log.debug('HdR vaule %s' %  content[oai_field][0])
                 try:
                     if ckan_field == 'maintainer_email' and '@' not in content[oai_field][0]:
                         # Email not available.
@@ -423,8 +424,9 @@ class OaipmhHarvester(HarvesterBase):
             #    extras.append((key + str(i),value + 'secondkey' + str(i)))
 
 	    if content['doi']:
-                extras.append(('Source',content['doi'][0]))	
-            if content['created']:
+                # extras.append(('Source',content['doi'][0]))	
+                package_dict['url'] = 'http://blabla.com' + content['doi'][0]
+	    if content['created']:
                 extras.append(('Created',content['created'][0]))
             if content['publicationYear']:
                 extras.append(('Year of publication',content['publicationYear'][0])) 
@@ -442,9 +444,12 @@ class OaipmhHarvester(HarvesterBase):
                 extras.append(('geobox-sLat',content['southBoundLatitude'][0]))
 
             if content['contact']:
-                extras.append(('Contact', content['contact'][0] + '-' + content['contactAffiliation'][0]))
-            if content['contactEmail']:
-                extras.append(('Contact email', 'blabla@blabla.com'))
+                #extras.append(('Contact', content['contact'][0] + '-' + content['contactAffiliation'][0]))
+            	package_dict['maintainer'] = content['contact'][0] + '-' + content['contactAffiliation'][0]
+	    if content['contactEmail']:
+                # extras.append(('Contact email', 'blabla@blabla.com'))
+		package_dict['maintainer_email'] =  'blabla@blabla.com'
+
             if content['publisher']:
                 extras.append(('Publisher',content['publisher'][0]))
 
@@ -678,7 +683,29 @@ class OaipmhHarvester(HarvesterBase):
         log.debug('Organization names: %s' % organizations)
         organization_ids = []
         for organization_name in organizations:
-            data_dict = {
+	    log.debug('Organization name: %s' % organization_name)
+#	    organization_name = organization_name.encode('utf-8', 'ignore').decode('utf-8')
+	    log.debug('Organization name: %s' % organization_name)	
+            
+	    if 'Physical Modeling Laboratory (GEC)' in organization_name:
+#		organization_name = organization_name.encode('utf-8')
+		# organization_name = (u'Pogin1')
+		if isinstance(organization_name, unicode):
+		    log.debug('%s IS unicode' % organization_name)
+                    log.debug(unicode(u'\xa1').encode("utf-8"))
+
+		    log.debug(unicode(u'\xe9').encode("utf-8"))
+
+		    log.debug(unicode(u'\xc3').encode("utf-8"))
+
+		    log.debug(unicode(u'\0xc3').encode("utf-8"))
+
+
+		    organization_name = organization_name.encode('utf-8')
+		else:
+                    log.debug('%s is NO unicode' % organization_name)
+	        # log.debug('Organization name: %s' % organization_name)
+	    data_dict = {
                 'id': organization_name,
                 'name': munge_title_to_name(organization_name),
                 'title': organization_name

@@ -1,5 +1,6 @@
 import sys
 
+
 #  from oaipmh.metadata import MetadataReader
 from oaipmh import common
 from lxml import etree
@@ -46,7 +47,7 @@ class MetadataReader(object):
             elif field_type == 'textList':
                 # make sure we get back unicode strings instead
                 # of lxml.etree._ElementUnicodeResult objects.
-                value = [text_type(v) for v in e(expr)]
+                value = [unicode(v) for v in e(expr)] # [text_type(v) for v in e(expr)]
             else:
                 raise Error("Unknown field type: %s" % field_type)
             map[field_name] = value
