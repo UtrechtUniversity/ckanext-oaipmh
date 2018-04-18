@@ -680,8 +680,15 @@ class OaipmhHarvester(HarvesterBase):
                 group = get_action('group_show')(context, data_dict)
                 #  log.info('found the group ' + group['id'])
             except:
-                group = get_action('group_create')(context, data_dict)
-                log.info('created the group ' + group['id'])
+                try:
+		    group = get_action('group_create')(context, data_dict)
+                    log.info('created the group ' + group['id'])
+                except:
+                    log.info('creation of group was troublesome-revert to: ' + data_dict['id'])
+                    group = {
+                        'id': data_dict['id']
+                    }
+
             group_ids.append(group['id'])
 
         #  log.debug('Group ids: %s' % group_ids)
@@ -701,9 +708,16 @@ class OaipmhHarvester(HarvesterBase):
                 organization = get_action('organization_show')(context, data_dict)
                 #  log.info('found the organization: ' + organization['id'])
             except:
-                organization = get_action('organization_create')(context, data_dict)
-                log.info('created the organization ' + organization['id'])
-            organization_ids.append(organization['id'])
+                try:
+                    organization = get_action('organization_create')(context, data_dict)
+		    log.info('created the organization ' + organization['id'])
+		except:
+		    log.info('creation of organization was troublesome-revert to: ' + data_dict['id'])
+                    organization = {
+			'id': data_dict['id']
+		    }
+             
+	    organization_ids.append(organization['id'])
 
         log.debug('All organization ids: %s' % organization_ids)
         return organization_ids
