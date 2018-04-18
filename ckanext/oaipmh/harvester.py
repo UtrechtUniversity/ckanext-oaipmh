@@ -22,6 +22,8 @@ from pprint import pprint
 
 import traceback
 
+import unicodedata
+
 log = logging.getLogger(__name__)
 
 
@@ -219,8 +221,8 @@ class OaipmhHarvester(HarvesterBase):
                 if metadata_modified:
                     content_dict['metadata_modified'] = metadata_modified
                 
-		log.debug('Before json.dumps')
-		log.debug(content_dict)
+#		log.debug('Before json.dumps')
+#		log.debug(content_dict)
                 content = json.dumps(content_dict, ensure_ascii=False, encoding="utf-8")
                 # log.debug(content)
             except:
@@ -231,8 +233,8 @@ class OaipmhHarvester(HarvesterBase):
                 )
                 return False
 
-            log.debug('Write harvest_object:')
-            log.debug(content)
+#            log.debug('Write harvest_object:')
+#            log.debug(content)
 
             harvest_object.content = content
             harvest_object.save()
@@ -287,11 +289,11 @@ class OaipmhHarvester(HarvesterBase):
 
             package_dict = {}
 
-	    log.debug('Before json.load')
-            log.debug(harvest_object.content)
+#	    log.debug('Before json.load')
+#            log.debug(harvest_object.content)
             content = json.loads(harvest_object.content) #.encode('ascii', 'ignore').decode('ascii'))
-            log.debug('After json.load: ')
-            log.debug(content)
+#            log.debug('After json.load: ')
+#            log.debug(content)
 
 
             package_dict['id'] = munge_title_to_name(harvest_object.guid)
@@ -334,13 +336,14 @@ class OaipmhHarvester(HarvesterBase):
          #   log.debug(owner_org)
 
 
-            organizations = ['Unidentified'] # default
+            organizations = [u'Unidentified'] # default
 
 	    if content['orgAffiliations']:
             	organizations = content['orgAffiliations']
 	    elif content['organizations']:
 		 organizations = content['organizations']
-            org_ids = self._find_or_create_organizations(
+            
+	    org_ids = self._find_or_create_organizations(
                     organizations,
                     context
                 )
@@ -669,7 +672,7 @@ class OaipmhHarvester(HarvesterBase):
         group_ids = []
         for group_name in groups:
             data_dict = {
-                'id': group_name,
+                'id': self._utf8_and_remove_diacritics(group_name),
                 'name': munge_title_to_name(group_name),
                 'title': group_name
             }
@@ -689,32 +692,8 @@ class OaipmhHarvester(HarvesterBase):
         log.debug('Organization names: %s' % organizations)
         organization_ids = []
         for organization_name in organizations:
-#	    log.debug('Organization name: %s' % organization_name)
-#	    organization_name = organization_name.encode('utf-8', 'ignore').decode('utf-8')
-#	    log.debug('Organization name: %s' % organization_name)	
-            
-	    if 'Physical Modeling Laboratory (GEC)' in organization_name:
-#		# organization_name = organization_name.encode('utf-8')
-		# organization_name = (u'Pogin1')
-		if isinstance(organization_name, unicode):
-		    for c in organization_name:
-			log.debug('%s' % c);	
-		    log.debug('%s IS unicode' % organization_name)
-                    log.debug(unicode(u'\xa1').encode("utf-8"))
-
-		    log.debug(unicode(u'\xe9').encode("utf-8"))
-
-		    log.debug(unicode(u'\xc3').encode("utf-8"))
-
-		    log.debug(unicode(u'\u00e9').encode("utf-8"))
-
-
-		   # organization_name = organization_name.encode('utf-8')
-		else:
-                    log.debug('%s is NO unicode' % organization_name)
-	        # log.debug('Organization name: %s' % organization_name)
 	    data_dict = {
-                'id': organization_name,
+                'id': self._utf8_and_remove_diacritics(organization_name),
                 'name': munge_title_to_name(organization_name),
                 'title': organization_name
             }
@@ -726,7 +705,10 @@ class OaipmhHarvester(HarvesterBase):
                 log.info('created the organization ' + organization['id'])
             organization_ids.append(organization['id'])
 
-#        log.debug('All organization ids: %s' % organization_ids)
+        log.debug('All organization ids: %s' % organization_ids)
         return organization_ids
 
+    def _utf8_and_remove_diacritics(self, input_str):
+        nkfd_form = unicodedata.normalize('NFKD', unicode(input_str))
+        return (u"".join([c for c in nkfd_form if not unicodedata.combining(c)])).encode('utf-8')
 
