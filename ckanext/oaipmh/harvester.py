@@ -55,7 +55,7 @@ class OaipmhHarvester(HarvesterBase):
         :param harvest_job: HarvestJob object
         :returns: A list of HarvestObject ids
         '''
-        log.debug("HDR in gather stage: %s" % harvest_job.source.url)
+#        log.debug("HDR in gather stage: %s" % harvest_job.source.url)
         try:
             harvest_obj_ids = []
             registry = self._create_metadata_registry()
@@ -204,8 +204,8 @@ class OaipmhHarvester(HarvesterBase):
                 return False
 
             header, metadata, _ = record
-            log.debug('metadata %s' % metadata)
-            log.debug('header %s' % header)
+            #log.debug('metadata %s' % metadata)
+            #log.debug('header %s' % header)
 
             try:
                 metadata_modified = header.datestamp().isoformat()
@@ -218,8 +218,10 @@ class OaipmhHarvester(HarvesterBase):
                 content_dict['set_spec'] = header.setSpec()
                 if metadata_modified:
                     content_dict['metadata_modified'] = metadata_modified
-                #  log.debug(content_dict)
-                content = json.dumps(content_dict)
+                
+		log.debug('Before json.dumps')
+		log.debug(content_dict)
+                content = json.dumps(content_dict, ensure_ascii=False, encoding="utf-8")
                 # log.debug(content)
             except:
                 log.exception('Dumping the metadata failed!')
@@ -228,6 +230,9 @@ class OaipmhHarvester(HarvesterBase):
                     harvest_object
                 )
                 return False
+
+            log.debug('Write harvest_object:')
+            log.debug(content)
 
             harvest_object.content = content
             harvest_object.save()
@@ -282,10 +287,11 @@ class OaipmhHarvester(HarvesterBase):
 
             package_dict = {}
 
-
-            # log.error(harvest_object.content)
-            content = json.loads(harvest_object.content)
-            # log.error(content)
+	    log.debug('Before json.load')
+            log.debug(harvest_object.content)
+            content = json.loads(harvest_object.content) #.encode('ascii', 'ignore').decode('ascii'))
+            log.debug('After json.load: ')
+            log.debug(content)
 
 
             package_dict['id'] = munge_title_to_name(harvest_object.guid)
@@ -296,9 +302,9 @@ class OaipmhHarvester(HarvesterBase):
 	    # HIER ALLEEN ENKELVOUDIGE VELDEN!!
 	    # DE MAPPING GAAT ALLEEN OVER ENKELE VELDEN
             for ckan_field, oai_field in mapping.iteritems():
-                log.debug('HDR ckan_field %s' % ckan_field)
-                log.debug('HDR oai_field %s' % oai_field)
-		log.debug('HdR vaule %s' %  content[oai_field][0])
+             #   log.debug('HDR ckan_field %s' % ckan_field)
+             #   log.debug('HDR oai_field %s' % oai_field)
+	#	log.debug('HdR vaule %s' %  content[oai_field][0])
                 try:
                     if ckan_field == 'maintainer_email' and '@' not in content[oai_field][0]:
                         # Email not available.
@@ -324,8 +330,8 @@ class OaipmhHarvester(HarvesterBase):
               context,
               {'id': harvest_object.source.id}
             )
-            owner_org = source_dataset.get('owner_org')
-            log.debug(owner_org)
+#            owner_org = source_dataset.get('owner_org')
+         #   log.debug(owner_org)
 
 
             organizations = ['Unidentified'] # default
@@ -425,7 +431,7 @@ class OaipmhHarvester(HarvesterBase):
 
 	    if content['doi']:
                 # extras.append(('Source',content['doi'][0]))	
-                package_dict['url'] = 'http://blabla.com' + content['doi'][0]
+                package_dict['url'] = 'http://doi.org/' + content['doi'][0]
 	    if content['created']:
                 extras.append(('Created',content['created'][0]))
             if content['publicationYear']:
@@ -683,14 +689,16 @@ class OaipmhHarvester(HarvesterBase):
         log.debug('Organization names: %s' % organizations)
         organization_ids = []
         for organization_name in organizations:
-	    log.debug('Organization name: %s' % organization_name)
+#	    log.debug('Organization name: %s' % organization_name)
 #	    organization_name = organization_name.encode('utf-8', 'ignore').decode('utf-8')
-	    log.debug('Organization name: %s' % organization_name)	
+#	    log.debug('Organization name: %s' % organization_name)	
             
 	    if 'Physical Modeling Laboratory (GEC)' in organization_name:
-#		organization_name = organization_name.encode('utf-8')
+#		# organization_name = organization_name.encode('utf-8')
 		# organization_name = (u'Pogin1')
 		if isinstance(organization_name, unicode):
+		    for c in organization_name:
+			log.debug('%s' % c);	
 		    log.debug('%s IS unicode' % organization_name)
                     log.debug(unicode(u'\xa1').encode("utf-8"))
 
@@ -698,10 +706,10 @@ class OaipmhHarvester(HarvesterBase):
 
 		    log.debug(unicode(u'\xc3').encode("utf-8"))
 
-		    log.debug(unicode(u'\0xc3').encode("utf-8"))
+		    log.debug(unicode(u'\u00e9').encode("utf-8"))
 
 
-		    organization_name = organization_name.encode('utf-8')
+		   # organization_name = organization_name.encode('utf-8')
 		else:
                     log.debug('%s is NO unicode' % organization_name)
 	        # log.debug('Organization name: %s' % organization_name)
@@ -718,7 +726,7 @@ class OaipmhHarvester(HarvesterBase):
                 log.info('created the organization ' + organization['id'])
             organization_ids.append(organization['id'])
 
-        log.debug('All organization ids: %s' % organization_ids)
+#        log.debug('All organization ids: %s' % organization_ids)
         return organization_ids
 
 
