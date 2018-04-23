@@ -697,16 +697,17 @@ class OaipmhHarvester(HarvesterBase):
                 group = get_action('group_show')(context, data_dict)
                 #  log.info('found the group ' + group['id'])
             except:
-                try:
-		    group = get_action('group_create')(context, data_dict)
-                    log.info('created the group ' + group['id'])
-                except:
-                    log.info('creation of group was troublesome-revert to: ' + data_dict['id'])
-                    group = {
-                        'id': data_dict['id']
-                    }
-
-            group_ids.append(group['id'])
+            #    try:
+	    #	    group = get_action('group_create')(context, data_dict)
+            #        log.info('created the group ' + group['id'])
+            #    except:
+            #        log.info('creation of group was troublesome-revert to: ' + data_dict['id'])
+            #        group = {
+            #            'id': data_dict['id']
+            #        }
+	    group = self._create_entity(self, 'group', data_dict, context)
+            
+	    group_ids.append(group['id'])
 
         #  log.debug('Group ids: %s' % group_ids)
         return group_ids
@@ -725,19 +726,37 @@ class OaipmhHarvester(HarvesterBase):
                 organization = get_action('organization_show')(context, data_dict)
                 #  log.info('found the organization: ' + organization['id'])
             except:
-                try:
-                    organization = get_action('organization_create')(context, data_dict)
-		    log.info('created the organization ' + organization['id'])
-		except:
-		    log.info('creation of organization was troublesome-revert to: ' + data_dict['id'])
-                    organization = {
-			'id': data_dict['id']
-		    }
+                #try:
+                #    organization = get_action('organization_create')(context, data_dict)
+		#    log.info('created the organization ' + organization['id'])
+		#except:
+		#    log.info('creation of organization was troublesome-revert to: ' + data_dict['id'])
+                #    organization = {
+		#	'id': data_dict['id']
+		#    }
+		organization = self._create_entity(self, 'organization', data_dict, context)
              
 	    organization_ids.append(organization['id'])
 
-        log.debug('All organization ids: %s' % organization_ids)
+        #log.debug('All organization ids: %s' % organization_ids)
         return organization_ids
+
+
+    # Generic function to create either a group or organization. 
+    # Dict requires diacritics removed on id 	
+    def _create_entity(self, entityType, entityDict, context):
+        try:
+            newEntity = get_action(entityType + '_create')(context, entityDict)
+            log.info('Created '+ entityTpe + with id: ' + newEntity['id'])
+        except:
+           # entityDict already holds the correct id - so if problems during creations return the value already known
+	   # Log it though
+           log.info('Creation of ' + entityType + ' was troublesome-revert to: ' + entityDict['id'])
+           newEntity = {
+               'id': entityDict['id']
+           }
+
+	return newEntity['id']
 
     def _utf8_and_remove_diacritics(self, input_str):
         nkfd_form = unicodedata.normalize('NFKD', unicode(input_str))
