@@ -17,7 +17,7 @@ from oaipmh.metadata import MetadataRegistry
 from metadata import oai_ddi_reader
 from metadata import oai_dc_reader
 from metadata import dif_reader, dif_reader2
-from metadata import datacite_reader
+from metadata import datacite_reader3, datacite_reader4
 from pprint import pprint
 
 import traceback
@@ -60,8 +60,15 @@ class OaipmhHarvester(HarvesterBase):
 #        log.debug("HDR in gather stage: %s" % harvest_job.source.url)
         try:
             harvest_obj_ids = []
-            registry = self._create_metadata_registry()
-            self._set_config(harvest_job.source.config)
+            
+	    # HdR registry content is now dependant on info fetched from datasource
+	    # registry = self._create_metadata_registry()
+            
+	    log.debug(harvest_job.source.config)
+	    self._set_config(harvest_job.source.config)
+            # hdr addition
+            registry = self._hdr_create_metadata_registry()
+
             client = oaipmh.client.Client(
                 harvest_job.source.url,
                 registry,
@@ -129,9 +136,28 @@ class OaipmhHarvester(HarvesterBase):
         registry.registerReader('oai_ddi', oai_ddi_reader)
         # TODO: Change back?
         registry.registerReader('dif', dif_reader2)
-	# HDR
-        registry.registerReader('datacite', datacite_reader)
+	
+        registry.registerReader('datacite_3', datacite_reader)
+        registry.registerReader('datacite_4', datacite_reader)
+
         return registry
+
+    def _hdr_create_metadata_registry(self):
+        registry = MetadataRegistry()
+
+	log.debug('hdr_create_registry md_format %s' % self.md_format)	
+        log.debug('hdr_create_registry additional_inf %s' % self.additional_info)
+
+	# ff er vanuit gaan dat het alleen datacite is
+	if self.additional_info == 'kernel3':
+	    registry.registerReader(self.md_format, datacite_reader3)	
+            log.debug('->datacite_reader3')     
+	else:
+	    registry.registerReader(self.md_format, datacite_reader4)
+            log.debug('->datacite_reader4')
+
+        return registry
+
 
     def _set_config(self, source_config):
         try:
@@ -150,7 +176,8 @@ class OaipmhHarvester(HarvesterBase):
 
             self.user = 'harvest'
             self.set_spec = config_json.get('set', None)
-            self.md_format = config_json.get('metadata_prefix', 'dif')
+            self.md_format = config_json.get('metadata_prefix', 'datacite')
+            self.additional_info = config_json.get('additional_info', '') 
             # TODO: Change default back to 'oai_dc'
             self.force_http_get = config_json.get('force_http_get', False)
 
@@ -177,7 +204,7 @@ class OaipmhHarvester(HarvesterBase):
 
         try:
             self._set_config(harvest_object.job.source.config)
-            registry = self._create_metadata_registry()
+            registry = self._hdr_create_metadata_registry()
             client = oaipmh.client.Client(
                 harvest_object.job.source.url,
                 registry,
@@ -289,7 +316,7 @@ class OaipmhHarvester(HarvesterBase):
 
             package_dict = {}
 
-            content = json.loads(harvest_object.content) #.encode('ascii', 'ignore').decode('ascii'))
+            content = json.loads(harvest_object.content)
 
             package_dict['id'] = munge_title_to_name(harvest_object.guid)
             package_dict['name'] = package_dict['id']
@@ -313,14 +340,15 @@ class OaipmhHarvester(HarvesterBase):
             package_dict['author'] =  ', '.join(content['creator'])
 
             # add owner_org
-            source_dataset = get_action('package_show')(
-              context,
-              {'id': harvest_object.source.id}
-            )
+#            source_dataset = get_action('package_show')(
+#              context,
+#              {'id': harvest_object.source.id}
+#            )
 #            owner_org = source_dataset.get('owner_org')
-         #   log.debug(owner_org)
+#         #   log.debug(owner_org)
 
 
+	    # add organization
             organizations = [u'Unidentified'] # default
 
 	    if content['orgAffiliations']:
@@ -332,8 +360,6 @@ class OaipmhHarvester(HarvesterBase):
                     organizations,
                     context
                 )
-
-
             package_dict['owner_org'] = org_ids[0]
 
 #            # add license
@@ -460,6 +486,11 @@ class OaipmhHarvester(HarvesterBase):
 #            )
 
 
+	    # When using Datacite 3 / 4 this delivers an object queue disregarding the namespace.
+	    # The consequence is that, when actually harvesting, not all information is fetched.
+            # When datacite3 is used->datacite4 records will be empty and vice versa.
+	    # Consequence is that empty records were written (added/updated) where this was not valid. 
+	    # By simply checking the presence of 'title' should solve this
             log.debug('Create/update package using dict: %s' % package_dict)
             if package_dict['title']:
 	        self._create_or_update_package(

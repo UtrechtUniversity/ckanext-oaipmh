@@ -30,10 +30,8 @@ class MetadataReader(object):
         xpath_evaluator = etree.XPathEvaluator(element,
                                                namespaces=self._namespaces)
 
-#        xmlstr = etree.tostring(element, encoding='utf8', method='xml')
-#        raise Error(xmlstr)
-	log.debug('HdR XML string:')
-	log.debug( etree.tostring(element, encoding='utf8', method='xml'))
+	#log.debug('HdR XML string:')
+	#log.debug( etree.tostring(element, encoding='utf8', method='xml'))
 
         e = xpath_evaluator.evaluate
         # now extra field info according to xpath expr
@@ -56,20 +54,18 @@ class MetadataReader(object):
         return common.Metadata(element, map)
 
 
-# /OAI-PMH/GetRecord/record/metadata/default:resource/default:identifier[@identifierType="DOI"]/text()
-
-datacite_reader = MetadataReader(
-    fields={
+# general fields for datacite as used by different readers
+datacite_fields = {
         'title':             ('textList', 'default:resource/default:titles/default:title/text()'),  # noqa
         'description':       ('textList', 'default:resource/default:descriptions/default:description/text()'),  # noqa
         'creator':           ('textList', 'default:resource/default:creators/default:creator/default:creatorName/text()'),  # noqa
         'rights':            ('textList', 'default:resource/default:rightsList/default:rights/text()'),  # noqa
-	'groups':            ('textList', 'default:resource/default:subjects/default:subject[text()="rock and melt physical properties" or text()="analogue models of geologic processes"]/text()'),
+        'groups':            ('textList', 'default:resource/default:subjects/default:subject[text()="rock and melt physical properties" or text()="analogue models of geologic processes"]/text()'),
         'tags':              ('textList', 'default:resource/default:subjects/default:subject[not(text()="rock and melt physical properties") and not(text()="analogue models of geologic processes")]/text()'),
         'doi':               ('textList', 'default:resource/default:identifier[@identifierType="DOI"]/text()'),
         'created':           ('textList', 'default:resource/default:dates/default:date[@dateType="Created"]/text()'),
-        'publicationYear':   ('textList', 'default:resource/default:publicationYear/text()'), 
-	'supplementTo':      ('textList', 'default:resource/default:relatedIdentifiers/default:relatedIdentifier[@relatedIdentifierType="DOI" and @relationType="IsSupplementTo"]/text()'),
+        'publicationYear':   ('textList', 'default:resource/default:publicationYear/text()'),
+        'supplementTo':      ('textList', 'default:resource/default:relatedIdentifiers/default:relatedIdentifier[@relatedIdentifierType="DOI" and @relationType="IsSupplementTo"]/text()'),
         'cites':             ('textList', 'default:resource/default:relatedIdentifiers/default:relatedIdentifier[@relatedIdentifierType="DOI" and @relationType="Cites"]/text()'),
         'westBoundLongitude':('textList', 'default:resource/default:geoLocations/default:geoLocation/default:geoLocationBox/default:westBoundLongitude/text()'),
         'eastBoundLongitude':('textList', 'default:resource/default:geoLocations/default:geoLocation/default:geoLocationBox/default:westBoundLongitude/text()'),
@@ -77,12 +73,21 @@ datacite_reader = MetadataReader(
         'northBoundLatitude':('textList', 'default:resource/default:geoLocations/default:geoLocation/default:geoLocationBox/default:northBoundLatitude/text()'),
         'contact':           ('textList', 'default:resource/default:contributors/default:contributor[@contributorType="ContactPerson"]/default:contributorName/text()'),
         'contactAffiliation':('textList', 'default:resource/default:contributors/default:contributor[@contributorType="ContactPerson"]/default:affiliation/text()'),
-        'contactEmail':      ('textList', 'default:resource/default:titles/default:title/text()'), 
+        'contactEmail':      ('textList', 'default:resource/default:titles/default:title/text()'),
         'publisher':         ('textList', 'default:resource/default:publisher/text()'),
         'organizations':     ('textList', 'default:resource/default:contributors/default:contributor[@contributorType="HostingInstitution"]/default:contributorName/text()'),
-	'orgAffiliations':    ('textList', 'default:resource/default:contributors/default:contributor[@contributorType="HostingInstitution"]/default:affiliation/text()')
+        'orgAffiliations':    ('textList', 'default:resource/default:contributors/default:contributor[@contributorType="HostingInstitution"]/default:affiliation/text()')
+    }
 
-    },
+datacite_reader3 = MetadataReader(
+    fields =  datacite_fields,
+    namespaces={
+        'default': 'http://datacite.org/schema/kernel-3'
+    }
+)
+
+datacite_reader4 = MetadataReader(
+    fields =  datacite_fields,
     namespaces={
     	'default': 'http://datacite.org/schema/kernel-4'
     }
