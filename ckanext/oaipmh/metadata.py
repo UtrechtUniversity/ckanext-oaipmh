@@ -1,5 +1,6 @@
 import sys
-
+import logging
+log = logging.getLogger(__name__)
 
 #  from oaipmh.metadata import MetadataReader
 from oaipmh import common
@@ -31,7 +32,8 @@ class MetadataReader(object):
 
 #        xmlstr = etree.tostring(element, encoding='utf8', method='xml')
 #        raise Error(xmlstr)
-
+	log.debug('HdR XML string:')
+	log.debug( etree.tostring(element, encoding='utf8', method='xml'))
 
         e = xpath_evaluator.evaluate
         # now extra field info according to xpath expr
@@ -80,24 +82,9 @@ datacite_reader = MetadataReader(
         'organizations':     ('textList', 'default:resource/default:contributors/default:contributor[@contributorType="HostingInstitution"]/default:contributorName/text()'),
 	'orgAffiliations':    ('textList', 'default:resource/default:contributors/default:contributor[@contributorType="HostingInstitution"]/default:affiliation/text()')
 
-
-        #'gfz-tags':          ('textList', 'default:resource/default:subjects/default:subject/text()'),
-        
-	#'subject':          ('textList', 'oai_dc:dc/dc:subject/text()'),  # noqa
-        #'publisher':        ('textList', 'oai_dc:dc/dc:publisher/text()'),  # noqa
-        #'maintainer_email': ('textList', 'oai_dc:dc/oai:maintainer_email/text()'),  # noqa
-        #'contributor':      ('textList', 'oai_dc:dc/dc:contributor/text()'),  # noqa
-        #'date':             ('textList', 'oai_dc:dc/dc:date/text()'),  # noqa
-        #'type':             ('textList', 'oai_dc:dc/dc:type/text()'),  # noqa
-        #'format':           ('textList', 'oai_dc:dc/dc:format/text()'),  # noqa
-        #'identifier':       ('textList', 'oai_dc:dc/dc:identifier/text()'),  # noqa
-        #'source':           ('textList', 'oai_dc:dc/dc:source/text()'),  # noqa
-        #'language':         ('textList', 'oai_dc:dc/dc:language/text()'),  # noqa
-        #'relation':         ('textList', 'oai_dc:dc/dc:relation/text()'),  # noqa
-        #'coverage':         ('textList', 'oai_dc:dc/dc:coverage/text()'),  # noqa
     },
     namespaces={
-    'default': 'http://datacite.org/schema/kernel-4'
+    	'default': 'http://datacite.org/schema/kernel-4'
     }
 )
 

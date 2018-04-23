@@ -173,7 +173,7 @@ class OaipmhHarvester(HarvesterBase):
         '''
         #  log.debug("in fetch stage: %s" % harvest_object.guid)
 
-        log.debug("HDR: Fetch url %s" % harvest_object.job.source.url)
+        # log.debug("HDR: Fetch url %s" % harvest_object.job.source.url)
 
         try:
             self._set_config(harvest_object.job.source.config)
@@ -199,15 +199,15 @@ class OaipmhHarvester(HarvesterBase):
                 )
                 self._after_record_fetch(record)
 
-                #  log.debug('record found!')
+                log.debug('HdR record found!')
             except:
                 log.exception('getRecord failed')
                 self._save_object_error('Get record failed!', harvest_object)
                 return False
 
             header, metadata, _ = record
-            #log.debug('metadata %s' % metadata)
-            #log.debug('header %s' % header)
+            log.debug('HdR metadata %s' % metadata)
+            log.debug('HdR header %s' % header)
 
             try:
                 metadata_modified = header.datestamp().isoformat()
@@ -217,14 +217,17 @@ class OaipmhHarvester(HarvesterBase):
             try:
                 # TODO: This fails for some resources
                 content_dict = metadata.getMap()
-                content_dict['set_spec'] = header.setSpec()
+                
+		log.debug('HdR content_dict: %s' %content_dict)
+		content_dict['set_spec'] = header.setSpec()
                 if metadata_modified:
                     content_dict['metadata_modified'] = metadata_modified
                 
-#		log.debug('Before json.dumps')
-#		log.debug(content_dict)
+		log.debug('HdR Before json.dumps')
+		log.debug(content_dict)
                 content = json.dumps(content_dict, ensure_ascii=False, encoding="utf-8")
-                # log.debug(content)
+                log.debug('HdR actual content:')
+		log.debug(content)
             except:
                 log.exception('Dumping the metadata failed!')
                 self._save_object_error(
@@ -232,9 +235,6 @@ class OaipmhHarvester(HarvesterBase):
                     harvest_object
                 )
                 return False
-
-#            log.debug('Write harvest_object:')
-#            log.debug(content)
 
             harvest_object.content = content
             harvest_object.save()
@@ -289,24 +289,14 @@ class OaipmhHarvester(HarvesterBase):
 
             package_dict = {}
 
-#	    log.debug('Before json.load')
-#            log.debug(harvest_object.content)
             content = json.loads(harvest_object.content) #.encode('ascii', 'ignore').decode('ascii'))
-#            log.debug('After json.load: ')
-#            log.debug(content)
-
 
             package_dict['id'] = munge_title_to_name(harvest_object.guid)
             package_dict['name'] = package_dict['id']
 
             mapping = self._get_mapping()
 
-	    # HIER ALLEEN ENKELVOUDIGE VELDEN!!
-	    # DE MAPPING GAAT ALLEEN OVER ENKELE VELDEN
             for ckan_field, oai_field in mapping.iteritems():
-             #   log.debug('HDR ckan_field %s' % ckan_field)
-             #   log.debug('HDR oai_field %s' % oai_field)
-	#	log.debug('HdR vaule %s' %  content[oai_field][0])
                 try:
                     if ckan_field == 'maintainer_email' and '@' not in content[oai_field][0]:
                         # Email not available.
@@ -318,13 +308,8 @@ class OaipmhHarvester(HarvesterBase):
                 except (IndexError, KeyError):
                     continue
 
-            # HdR from here package_dict has CKAN - keys
-	    # conntent is still based on json response -> i.e. GFZ
-	    # ------------------------------------------------------------
-
 
             # add author
-            # TODO: Remove Dataset_Creator and/or Dataset_Publisher as it is redundant information
             package_dict['author'] =  ', '.join(content['creator'])
 
             # add owner_org
@@ -464,7 +449,7 @@ class OaipmhHarvester(HarvesterBase):
 
             # test regel
 
-	    package_dict['extras'] = extras #['custom key1','custom val1'] #[] #['11', '22'] #extras
+	    package_dict['extras'] = extras 
 		
 
 # HIER GEBEURT NOG NIKS
@@ -475,11 +460,12 @@ class OaipmhHarvester(HarvesterBase):
 #            )
 
 
-            # log.debug('Create/update package using dict: %s' % package_dict)
-            self._create_or_update_package(
-                package_dict,
-                harvest_object
-            )
+            log.debug('Create/update package using dict: %s' % package_dict)
+            if package_dict['title']:
+	        self._create_or_update_package(
+                    package_dict,
+                    harvest_object
+                )
 
 
             Session.commit()
