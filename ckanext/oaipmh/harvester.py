@@ -431,9 +431,12 @@ class OaipmhHarvester(HarvesterBase):
             if content['publicationYear']:
                 extras.append(('Year of publication',content['publicationYear'][0])) 
 	    if content['supplementTo']:
-		extras.append(('Is supplement to', content['supplementTo'][0]))
+		extras.append(('Is supplement to', ', '.join(content['supplementTo']))) #[0]
 	    if content['cites']:
-                extras.append(('Cites',content['cites'][0]))
+                extras.append(('Cites', ', '.join(content['cites']))) #[0]
+            if content['references']:
+                extras.append(('References', ', '.join(content['references']))) #[0]
+
             if content['westBoundLongitude']:
                 extras.append(('geobox-wLong',content['westBoundLongitude'][0]))
             if content['eastBoundLongitude']:
@@ -453,7 +456,6 @@ class OaipmhHarvester(HarvesterBase):
             if content['publisher']:
                 extras.append(('Publisher',content['publisher'][0]))
 
-            # test regel
 
 	    package_dict['extras'] = extras 
 		
@@ -472,7 +474,7 @@ class OaipmhHarvester(HarvesterBase):
 	    # Consequence is that empty records were written (added/updated) where this was not valid. 
 	    # By simply checking the presence of 'title' should solve this
             log.debug('Create/update package using dict: %s' % package_dict)
-            if package_dict['title']:
+            if 'title' in package_dict and package_dict['title']:
 	        self._create_or_update_package(
                     package_dict,
                     harvest_object
