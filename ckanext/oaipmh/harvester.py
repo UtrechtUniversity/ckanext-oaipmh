@@ -741,7 +741,7 @@ class OaipmhHarvester(HarvesterBase):
                 entity = get_action(entityType + '_show')(context, data_dict)
                 log.info('found the ' + entityType + ' with id' + entity['id'])
             except:
-                entity = self._create_entity(self, entityType, data_dict, context)
+                entity = self._create_entity(entityType, data_dict, context)
 
             entity_ids.append(entity['id'])
 
@@ -763,7 +763,7 @@ class OaipmhHarvester(HarvesterBase):
                'id': entityDict['id']
            }
 
-	return newEntity['id']
+	return newEntity #newEntity['id']
 
     def _utf8_and_remove_diacritics(self, input_str):
         nkfd_form = unicodedata.normalize('NFKD', unicode(input_str))
