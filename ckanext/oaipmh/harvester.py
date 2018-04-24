@@ -765,7 +765,7 @@ class OaipmhHarvester(HarvesterBase):
                'id': entityDict['id']
            }
 
-	return newEntity #newEntity['id']
+	return newEntity
 
     def _utf8_and_remove_diacritics(self, input_str):
         nkfd_form = unicodedata.normalize('NFKD', unicode(input_str))
