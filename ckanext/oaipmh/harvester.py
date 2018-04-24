@@ -57,17 +57,13 @@ class OaipmhHarvester(HarvesterBase):
         :param harvest_job: HarvestJob object
         :returns: A list of HarvestObject ids
         '''
-#        log.debug("HDR in gather stage: %s" % harvest_job.source.url)
         try:
             harvest_obj_ids = []
             
-	    # HdR registry content is now dependant on info fetched from datasource
-	    # registry = self._create_metadata_registry()
-            
-	    log.debug(harvest_job.source.config)
 	    self._set_config(harvest_job.source.config)
-            # hdr addition
-            registry = self._hdr_create_metadata_registry()
+            
+	    # registry content is made dependant on info fetched from datasource
+	    registry = self._create_metadata_registry()
 
             client = oaipmh.client.Client(
                 harvest_job.source.url,
@@ -132,29 +128,23 @@ class OaipmhHarvester(HarvesterBase):
 
     def _create_metadata_registry(self):
         registry = MetadataRegistry()
-        registry.registerReader('oai_dc', oai_dc_reader)
-        registry.registerReader('oai_ddi', oai_ddi_reader)
-        # TODO: Change back?
-        registry.registerReader('dif', dif_reader2)
-	
-        registry.registerReader('datacite_3', datacite_reader)
-        registry.registerReader('datacite_4', datacite_reader)
 
-        return registry
-
-    def _hdr_create_metadata_registry(self):
-        registry = MetadataRegistry()
-
-	log.debug('hdr_create_registry md_format %s' % self.md_format)	
-        log.debug('hdr_create_registry additional_inf %s' % self.additional_info)
+	#log.debug('hdr_create_registry md_format %s' % self.md_format)	
+        #log.debug('hdr_create_registry additional_info %s' % self.additional_info)
 
 	# ff er vanuit gaan dat het alleen datacite is
-	if self.additional_info == 'kernel3':
-	    registry.registerReader(self.md_format, datacite_reader3)	
-            log.debug('->datacite_reader3')     
-	else:
-	    registry.registerReader(self.md_format, datacite_reader4)
-            log.debug('->datacite_reader4')
+	if self.md_format == 'datacite':
+	    if self.additional_info == 'kernel3':
+	        registry.registerReader(self.md_format, datacite_reader3)	
+                log.debug('->datacite_reader3')     
+	    else:
+	        registry.registerReader(self.md_format, datacite_reader4)
+                log.debug('->datacite_reader4')
+
+        else:
+	    registry.registerReader('oai_dc', oai_dc_reader)
+            registry.registerReader('oai_ddi', oai_ddi_reader)
+            registry.registerReader('dif', dif_reader2)
 
         return registry
 
@@ -177,7 +167,9 @@ class OaipmhHarvester(HarvesterBase):
             self.user = 'harvest'
             self.set_spec = config_json.get('set', None)
             self.md_format = config_json.get('metadata_prefix', 'datacite')
-            self.additional_info = config_json.get('additional_info', '') 
+	    # additional info adds possibities to differentiate within a metadata_prefix
+	    # MAYBE call this variable namespace_info
+            self.additional_info = config_json.get('additional_info', 'kernel4') 
             # TODO: Change default back to 'oai_dc'
             self.force_http_get = config_json.get('force_http_get', False)
 
@@ -198,13 +190,12 @@ class OaipmhHarvester(HarvesterBase):
         :param harvest_object: HarvestObject object
         :returns: True if everything went right, False if errors were found
         '''
-        #  log.debug("in fetch stage: %s" % harvest_object.guid)
-
         # log.debug("HDR: Fetch url %s" % harvest_object.job.source.url)
 
         try:
             self._set_config(harvest_object.job.source.config)
-            registry = self._hdr_create_metadata_registry()
+	    # registry creation is dependant on job.source.config because of differentiation possibilities in namespaces for equal md_prefix 
+	    registry = self._create_metadata_registry()
             client = oaipmh.client.Client(
                 harvest_object.job.source.url,
                 registry,
@@ -213,11 +204,6 @@ class OaipmhHarvester(HarvesterBase):
             )
             record = None
             try:
-                log.debug(
-                    "HDR Load %s with metadata prefix '%s'" %
-                    (harvest_object.guid, self.md_format)
-                )
-
                 self._before_record_fetch(harvest_object)
 
                 record = client.getRecord(
@@ -226,15 +212,14 @@ class OaipmhHarvester(HarvesterBase):
                 )
                 self._after_record_fetch(record)
 
-                log.debug('HdR record found!')
             except:
                 log.exception('getRecord failed')
                 self._save_object_error('Get record failed!', harvest_object)
                 return False
 
             header, metadata, _ = record
-            log.debug('HdR metadata %s' % metadata)
-            log.debug('HdR header %s' % header)
+            #log.debug('HdR metadata %s' % metadata)
+            #log.debug('HdR header %s' % header)
 
             try:
                 metadata_modified = header.datestamp().isoformat()
@@ -250,11 +235,7 @@ class OaipmhHarvester(HarvesterBase):
                 if metadata_modified:
                     content_dict['metadata_modified'] = metadata_modified
                 
-		log.debug('HdR Before json.dumps')
-		log.debug(content_dict)
                 content = json.dumps(content_dict, ensure_ascii=False, encoding="utf-8")
-                log.debug('HdR actual content:')
-		log.debug(content)
             except:
                 log.exception('Dumping the metadata failed!')
                 self._save_object_error(
@@ -356,10 +337,12 @@ class OaipmhHarvester(HarvesterBase):
 	    elif content['organizations']:
 		 organizations = content['organizations']
             
-	    org_ids = self._find_or_create_organizations(
-                    organizations,
-                    context
-                )
+	    #org_ids = self._find_or_create_organizations(
+            #        organizations,
+            #        context
+            #    )
+
+	    org_ids = self._find_or_create_entity('organization', organizations, context)
             package_dict['owner_org'] = org_ids[0]
 
 #            # add license
@@ -421,10 +404,7 @@ class OaipmhHarvester(HarvesterBase):
             if subjects:
                 log.debug('subjects: %s' % subjects)
                 groups.extend(
-                    self._find_or_create_groups(
-                        subjects,
-                        context
-                    )
+                    self._find_or_create_entity('group', subjects, context) 
                 )
 
 	    # add the groups that were found to the package
@@ -685,7 +665,9 @@ class OaipmhHarvester(HarvesterBase):
         return package_dict
 
     def _find_or_create_groups(self, groups, context):
-        log.debug('Group names: %s' % groups)
+        return self._find_or_create_entity(self, 'group', groups, context)
+
+	log.debug('Group names: %s' % groups)
         group_ids = []
         for group_name in groups:
             data_dict = {
@@ -705,7 +687,7 @@ class OaipmhHarvester(HarvesterBase):
             #        group = {
             #            'id': data_dict['id']
             #        }
-	    group = self._create_entity(self, 'group', data_dict, context)
+	       group = self._create_entity(self, 'group', data_dict, context)
             
 	    group_ids.append(group['id'])
 
@@ -714,7 +696,10 @@ class OaipmhHarvester(HarvesterBase):
 
     # return list of ids of found or added organizations
     def _find_or_create_organizations(self, organizations, context):
-        log.debug('Organization names: %s' % organizations)
+
+	return self._find_or_create_entity(self, 'organization', organizations, context)        
+
+	log.debug('Organization names: %s' % organizations)
         organization_ids = []
         for organization_name in organizations:
 	    data_dict = {
@@ -742,12 +727,34 @@ class OaipmhHarvester(HarvesterBase):
         return organization_ids
 
 
+    # generic function for finding/creation of multiple entities (groups/organizations)	
+    def _find_or_create_entity(self, entityType, entityNames, context):
+        log.debug(entityType + ' names: %s' % entityNames)
+        entity_ids = []
+        for entity_name in entityNames:
+            data_dict = {
+                'id': self._utf8_and_remove_diacritics(entity_name),
+                'name': munge_title_to_name(entity_name),
+                'title': entity_name
+            }
+            try:
+                entity = get_action(entityType + '_show')(context, data_dict)
+                log.info('found the ' + entityType + ' with id' + entity['id'])
+            except:
+                entity = self._create_entity(self, entityType, data_dict, context)
+
+            entity_ids.append(entity['id'])
+
+            log.debug(entityType + ' ids: %s' % entity_ids)
+        return entity_ids
+
+
     # Generic function to create either a group or organization. 
     # Dict requires diacritics removed on id 	
     def _create_entity(self, entityType, entityDict, context):
         try:
             newEntity = get_action(entityType + '_create')(context, entityDict)
-            log.info('Created '+ entityTpe + with id: ' + newEntity['id'])
+            log.info('Created '+ entityTpe + ' with id: ' + newEntity['id'])
         except:
            # entityDict already holds the correct id - so if problems during creations return the value already known
 	   # Log it though
