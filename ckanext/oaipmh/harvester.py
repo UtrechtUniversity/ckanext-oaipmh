@@ -129,10 +129,6 @@ class OaipmhHarvester(HarvesterBase):
     def _create_metadata_registry(self):
         registry = MetadataRegistry()
 
-	#log.debug('hdr_create_registry md_format %s' % self.md_format)	
-        #log.debug('hdr_create_registry additional_info %s' % self.additional_info)
-
-	# ff er vanuit gaan dat het alleen datacite is
 	if self.md_format == 'datacite':
 	    if self.additional_info == 'kernel3':
 	        registry.registerReader(self.md_format, datacite_reader3)	
@@ -168,7 +164,7 @@ class OaipmhHarvester(HarvesterBase):
             self.set_spec = config_json.get('set', None)
             self.md_format = config_json.get('metadata_prefix', 'datacite')
 	    # additional info adds possibities to differentiate within a metadata_prefix
-	    # MAYBE call this variable namespace_info
+	    # maybe call this variable namespace_info
             self.additional_info = config_json.get('additional_info', 'kernel4') 
             # TODO: Change default back to 'oai_dc'
             self.force_http_get = config_json.get('force_http_get', False)
@@ -218,8 +214,6 @@ class OaipmhHarvester(HarvesterBase):
                 return False
 
             header, metadata, _ = record
-            #log.debug('HdR metadata %s' % metadata)
-            #log.debug('HdR header %s' % header)
 
             try:
                 metadata_modified = header.datestamp().isoformat()
@@ -227,10 +221,9 @@ class OaipmhHarvester(HarvesterBase):
                 metadata_modified = None
 
             try:
-                # TODO: This fails for some resources
                 content_dict = metadata.getMap()
                 
-		log.debug('HdR content_dict: %s' %content_dict)
+		# HDR? required still? 
 		content_dict['set_spec'] = header.setSpec()
                 if metadata_modified:
                     content_dict['metadata_modified'] = metadata_modified
@@ -292,9 +285,10 @@ class OaipmhHarvester(HarvesterBase):
                 'model': model,
                 'session': Session,
                 'user': self.user,
-                'ignore_auth': True  # TODO: Remove, just to test
+                'ignore_auth': True  # HDR? wat hiermee te doen?? TODO: Remove, just to test
             }
 
+	    # main dictonary holding all package data
             package_dict = {}
 
             content = json.loads(harvest_object.content)
@@ -302,8 +296,12 @@ class OaipmhHarvester(HarvesterBase):
             package_dict['id'] = munge_title_to_name(harvest_object.guid)
             package_dict['name'] = package_dict['id']
 
+
+# differentation starts here
+
             mapping = self._get_mapping()
 
+	    # add fields with single values as defined in _get_mapping -> dependent on the metadataPrefix/harvesting method 
             for ckan_field, oai_field in mapping.iteritems():
                 try:
                     if ckan_field == 'maintainer_email' and '@' not in content[oai_field][0]:
@@ -316,11 +314,15 @@ class OaipmhHarvester(HarvesterBase):
                 except (IndexError, KeyError):
                     continue
 
+	    self._handle_Blabla(self, content)
 
-            # add author
+
+# AUTHOR    
             package_dict['author'] =  ', '.join(content['creator'])
 
-            # add owner_org
+# ORGANIZATION (LABS->datacite)
+
+#            # add owner_org
 #            source_dataset = get_action('package_show')(
 #              context,
 #              {'id': harvest_object.source.id}
@@ -336,37 +338,43 @@ class OaipmhHarvester(HarvesterBase):
             	organizations = content['orgAffiliations']
 	    elif content['organizations']:
 		 organizations = content['organizations']
-            
-	    #org_ids = self._find_or_create_organizations(
-            #        organizations,
-            #        context
-            #    )
-
+           
 	    org_ids = self._find_or_create_entity('organization', organizations, context)
             package_dict['owner_org'] = org_ids[0]
 
-#            # add license
+# LICENSE - NON datacite
+#            # add license - NON datacite
 #            package_dict['license_id'] = self._extract_license_id(content)
 
+# FORMATS - NON datacite???
             # TODO: Need to map to CKAN author field
             # formats = self._extract_formats(content)
-            package_dict['formats'] = 'datacite' #formats
+            package_dict['formats'] = 'datacite' #HDR -> voor datacite niet juist geimplmenteerd
 
-            # add resources
+# RESOURCES
+            # add resources - NON datacite
             # TODO: Make list
             # url = self._get_possible_resource(harvest_object, content)
             # package_dict['resources'] = self._extract_resources(url, content)
 
-            # extract tags from 'type' and 'subject' field
-            # everything else is added as extra field
-            tags, extras = self._extract_tags_and_extras(content)
-            package_dict['tags'] = tags
-            package_dict['extras'] = extras
+# URL - datacite
+            if content['doi']:
+                package_dict['url'] = 'http://doi.org/' + content['doi'][0]
 
+
+# GROUPS/TOPICS
             # groups aka projects
             groups = [] 
+            # create groups based on subjects
+            if content['groups']:
+                log.debug('subjects: %s' % content['groups'])
+                groups.extend(
+                    self._find_or_create_entity('group', content['groups'], context)
+                )
+	    package_dict['groups'] = groups
 
-            # create group based on set
+            
+            # create group based on set -> NOT datacite
 #            if content['set_spec']:
 #                log.debug('set_spec: %s' % content['set_spec'])
 #                groups.extend(
@@ -391,41 +399,30 @@ class OaipmhHarvester(HarvesterBase):
 #                        context
 #                    )
 #                )
+#	     package_dict['groups'] = groups
 
-
-	
-	    subjects = []
             
-            # hdrref
-	    # content['subjects'] = [] #['subject1', 'subject2']
-	    
-	    subjects = content['groups']
-	    # create groups based on subjects
-            if subjects:
-                log.debug('subjects: %s' % subjects)
-                groups.extend(
-                    self._find_or_create_entity('group', subjects, context) 
-                )
-
-	    # add the groups that were found to the package
-	    package_dict['groups'] = groups
-
-#            # extract tags from 'type' and 'subject' field
-#            # everything else is added as extra field
-            # tags, extras =  self._extract_tags_and_extras(content)
-	    # tags, extras = content['gfz-tags']	
+	    # TAGS-Datacite
             package_dict['tags'] = content['tags'] #['Tag1', 'Tag2'] #tags
-            
-	    extras = []
-	    #key ='key'
-            #value = 'value'
-            #for i in range(3):
-            #    extras.append((key + str(i),value + str(i)))
-            #    extras.append((key + str(i),value + 'secondkey' + str(i)))
 
-	    if content['doi']:
-                # extras.append(('Source',content['doi'][0]))	
-                package_dict['url'] = 'http://doi.org/' + content['doi'][0]
+            #!Datacite 
+            # extract tags from 'type' and 'subject' field
+            # everything else is added as extra field
+            #tags, extras = self._extract_tags_and_extras(content)
+            #package_dict['tags'] = tags
+            #package_dict['extras'] = extras
+
+
+
+# MAINTAINER info
+            if content['contact']:
+                package_dict['maintainer'] = content['contact'][0] + '-' + content['contactAffiliation'][0]
+            if content['contactEmail']:
+                package_dict['maintainer_email'] =  'blabla@blabla.com'
+
+# EXTRAS
+            extras = []
+
 	    if content['created']:
                 extras.append(('Created',content['created'][0]))
             if content['publicationYear']:
@@ -446,33 +443,19 @@ class OaipmhHarvester(HarvesterBase):
             if content['southBoundLatitude']:
                 extras.append(('geobox-sLat',content['southBoundLatitude'][0]))
 
-            if content['contact']:
-                #extras.append(('Contact', content['contact'][0] + '-' + content['contactAffiliation'][0]))
-            	package_dict['maintainer'] = content['contact'][0] + '-' + content['contactAffiliation'][0]
-	    if content['contactEmail']:
-                # extras.append(('Contact email', 'blabla@blabla.com'))
-		package_dict['maintainer_email'] =  'blabla@blabla.com'
-
             if content['publisher']:
                 extras.append(('Publisher',content['publisher'][0]))
-
 
 	    package_dict['extras'] = extras 
 		
 
-# HIER GEBEURT NOG NIKS
-#            # allow sub-classes to add additional fields
-#            package_dict = self._extract_additional_fields(
-#                content,
-#                package_dict
-#            )
-
-
-	    # When using Datacite 3 / 4 this delivers an object queue disregarding the namespace.
-	    # The consequence is that, when actually harvesting, not all information is fetched.
-            # When datacite3 is used->datacite4 records will be empty and vice versa.
-	    # Consequence is that empty records were written (added/updated) where this was not valid. 
-	    # By simply checking the presence of 'title' should solve this
+	    '''
+	    When using Datacite 3 / 4 this delivers an object queue disregarding the namespace.
+	    The consequence is that, when actually harvesting, not all information is fetched.
+            When datacite3 is used->datacite4 records will be empty and vice versa.
+	    Consequence is that empty records were written (added/updated) where this was not valid. 
+	    By simply checking the presence of 'title' should solve this
+            '''
             log.debug('Create/update package using dict: %s' % package_dict)
             if 'title' in package_dict and package_dict['title']:
 	        self._create_or_update_package(
@@ -493,8 +476,17 @@ class OaipmhHarvester(HarvesterBase):
             return False
         return True
 
-    def _get_mapping(self): # ALLEEN ENKELVOUDIGE VELDEN
-        if self.md_format == 'dif':
+
+# General
+    def _get_mapping(self): 
+	if self.md_format == 'datacite':        
+	    return {
+                'title': 'title',
+                'notes': 'description',
+                'license_id': 'rights'
+            }
+
+	elif self.md_format == 'dif':
             # CKAN fields explained here:
             # http://docs.ckan.org/en/ckan-1.7.4/domain-model-dataset.html
             # https://github.com/ckan/ckan/blob/master/ckan/logic/schema.py
@@ -525,6 +517,7 @@ class OaipmhHarvester(HarvesterBase):
                 #'url': 'source',
             }
 
+# !Datacite
 #    def _extract_author(self, content):
 #        if self.md_format == 'dif':
 #            dataset_creator = ', '.join(content['Data_Set_Citation/Dataset_Creator'])
@@ -539,6 +532,7 @@ class OaipmhHarvester(HarvesterBase):
 #        else:
 #            return ', '.join(content['creator'])
 
+# !Datacite
     def _extract_license_id(self, content):
         if self.md_format == 'dif':
             use_constraints = ', '.join(content['Use_Constraints'])
@@ -554,6 +548,7 @@ class OaipmhHarvester(HarvesterBase):
         else:
             return content['rights']
 
+# !Datacite
     def _extract_tags_and_extras(self, content):
         extras = []
         tags = []
@@ -576,6 +571,7 @@ class OaipmhHarvester(HarvesterBase):
 
         return (tags, extras)
 
+# !Datacite
     def _extract_formats(self, content):
         if self.md_format == 'dif':
             formats = []
@@ -597,6 +593,7 @@ class OaipmhHarvester(HarvesterBase):
         else:
             return content['format']
 
+# !Datacite
     def _get_possible_resource(self, harvest_obj, content):
         if self.md_format == 'dif':
             urls = content['Related_URL/URL']
@@ -612,6 +609,7 @@ class OaipmhHarvester(HarvesterBase):
                     break
             return url
 
+# !Datacite
     # TODO: Refactor
     def _extract_resources(self, urls, content):
         if self.md_format == 'dif':
@@ -652,6 +650,7 @@ class OaipmhHarvester(HarvesterBase):
                 })
             return resources
 
+# !Datacite
     def _extract_groups(self, content, context):
         if 'series' in content and len(content['series']) > 0:
             return self._find_or_create_groups(
@@ -660,75 +659,8 @@ class OaipmhHarvester(HarvesterBase):
             )
         return []
 
-    # TODO: Move custom DIF handling to this function
-    def _extract_additional_fields(self, content, package_dict):
-        # This method is the ideal place for sub-classes to
-        # change whatever they want in the package_dict
-        return package_dict
 
-    def _find_or_create_groups(self, groups, context):
-        return self._find_or_create_entity(self, 'group', groups, context)
-
-	log.debug('Group names: %s' % groups)
-        group_ids = []
-        for group_name in groups:
-            data_dict = {
-                'id': self._utf8_and_remove_diacritics(group_name),
-                'name': munge_title_to_name(group_name),
-                'title': group_name
-            }
-            try:
-                group = get_action('group_show')(context, data_dict)
-                #  log.info('found the group ' + group['id'])
-            except:
-            #    try:
-	    #	    group = get_action('group_create')(context, data_dict)
-            #        log.info('created the group ' + group['id'])
-            #    except:
-            #        log.info('creation of group was troublesome-revert to: ' + data_dict['id'])
-            #        group = {
-            #            'id': data_dict['id']
-            #        }
-	       group = self._create_entity(self, 'group', data_dict, context)
-            
-	    group_ids.append(group['id'])
-
-        #  log.debug('Group ids: %s' % group_ids)
-        return group_ids
-
-    # return list of ids of found or added organizations
-    def _find_or_create_organizations(self, organizations, context):
-
-	return self._find_or_create_entity(self, 'organization', organizations, context)        
-
-	log.debug('Organization names: %s' % organizations)
-        organization_ids = []
-        for organization_name in organizations:
-	    data_dict = {
-                'id': self._utf8_and_remove_diacritics(organization_name),
-                'name': munge_title_to_name(organization_name),
-                'title': organization_name
-            }
-            try:
-                organization = get_action('organization_show')(context, data_dict)
-                #  log.info('found the organization: ' + organization['id'])
-            except:
-                #try:
-                #    organization = get_action('organization_create')(context, data_dict)
-		#    log.info('created the organization ' + organization['id'])
-		#except:
-		#    log.info('creation of organization was troublesome-revert to: ' + data_dict['id'])
-                #    organization = {
-		#	'id': data_dict['id']
-		#    }
-		organization = self._create_entity(self, 'organization', data_dict, context)
-             
-	    organization_ids.append(organization['id'])
-
-        #log.debug('All organization ids: %s' % organization_ids)
-        return organization_ids
-
-
+# General
     # generic function for finding/creation of multiple entities (groups/organizations)	
     def _find_or_create_entity(self, entityType, entityNames, context):
         log.debug(entityType + ' names: %s' % entityNames)
@@ -750,7 +682,7 @@ class OaipmhHarvester(HarvesterBase):
             log.debug(entityType + ' ids: %s' % entity_ids)
         return entity_ids
 
-
+# General
     # Generic function to create either a group or organization. 
     # Dict requires diacritics removed on id 	
     def _create_entity(self, entityType, entityDict, context):
@@ -767,6 +699,7 @@ class OaipmhHarvester(HarvesterBase):
 
 	return newEntity
 
+# General
     def _utf8_and_remove_diacritics(self, input_str):
         nkfd_form = unicodedata.normalize('NFKD', unicode(input_str))
         return (u"".join([c for c in nkfd_form if not unicodedata.combining(c)])).encode('utf-8')
