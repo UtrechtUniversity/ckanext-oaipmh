@@ -383,8 +383,8 @@ class OaipmhHarvester(HarvesterBase):
         # create groups based on subjects
         if content['groups']:
             log.debug('subjects: %s' % content['groups'])
-                groups.extend(
-                self._find_or_create_entity('group', content['groups'], context)
+            groups.extend(
+                    self._find_or_create_entity('group', content['groups'], context)
             )
         self.package_dict['groups'] = groups
             
@@ -449,7 +449,7 @@ class OaipmhHarvester(HarvesterBase):
 
         # FORMATS 
         # TODO: Need to map to CKAN author field
-         formats = self._nonEpos_extract_formats(content)
+        formats = self._nonEpos_extract_formats(content)
         self.package_dict['formats'] = formats 
 
         # RESOURCES
