@@ -1,15 +1,16 @@
 import sys
 import logging
-log = logging.getLogger(__name__)
 
-#  from oaipmh.metadata import MetadataReader
+# from oaipmh.metadata import MetadataReader
 from oaipmh import common
 from lxml import etree
+
+log = logging.getLogger(__name__)
 
 if sys.version_info[0] == 3:
     text_type = str
 else:
-    text_type = unicode # noqa
+    text_type = unicode  # noqa
 
 
 class Error(Exception):
@@ -30,9 +31,6 @@ class MetadataReader(object):
         xpath_evaluator = etree.XPathEvaluator(element,
                                                namespaces=self._namespaces)
 
-	#log.debug('HdR XML string:')
-	#log.debug( etree.tostring(element, encoding='utf8', method='xml'))
-
         e = xpath_evaluator.evaluate
         # now extra field info according to xpath expr
         for field_name, (field_type, expr) in list(self._fields.items()):
@@ -47,7 +45,7 @@ class MetadataReader(object):
             elif field_type == 'textList':
                 # make sure we get back unicode strings instead
                 # of lxml.etree._ElementUnicodeResult objects.
-                value = [unicode(v) for v in e(expr)] # [text_type(v) for v in e(expr)]
+                value = [unicode(v) for v in e(expr)]  # [text_type(v) for v in e(expr)]
             else:
                 raise Error("Unknown field type: %s" % field_type)
             map[field_name] = value
@@ -67,7 +65,7 @@ datacite_fields = {
         'publicationYear':   ('textList', 'default:resource/default:publicationYear/text()'),
         'supplementTo':      ('textList', 'default:resource/default:relatedIdentifiers/default:relatedIdentifier[@relatedIdentifierType="DOI" and @relationType="IsSupplementTo"]/text()'),
         'cites':             ('textList', 'default:resource/default:relatedIdentifiers/default:relatedIdentifier[@relatedIdentifierType="DOI" and @relationType="Cites"]/text()'),
-	'references':        ('textList', 'default:resource/default:relatedIdentifiers/default:relatedIdentifier[@relatedIdentifierType="DOI" and @relationType="References"]/text()'),
+        'references':        ('textList', 'default:resource/default:relatedIdentifiers/default:relatedIdentifier[@relatedIdentifierType="DOI" and @relationType="References"]/text()'),
         'westBoundLongitude':('textList', 'default:resource/default:geoLocations/default:geoLocation/default:geoLocationBox/default:westBoundLongitude/text()'),
         'eastBoundLongitude':('textList', 'default:resource/default:geoLocations/default:geoLocation/default:geoLocationBox/default:westBoundLongitude/text()'),
         'southBoundLatitude':('textList', 'default:resource/default:geoLocations/default:geoLocation/default:geoLocationBox/default:southBoundLatitude/text()'),
@@ -90,7 +88,7 @@ datacite_reader3 = MetadataReader(
 datacite_reader4 = MetadataReader(
     fields =  datacite_fields,
     namespaces={
-    	'default': 'http://datacite.org/schema/kernel-4'
+        'default': 'http://datacite.org/schema/kernel-4'
     }
 )
 
@@ -270,7 +268,7 @@ dif_reader2 = MetadataReader(
 
         # Summary
         "Summary/Abstract": _eval_builder('textList', ['Summary', 'Abstract', 'text()']),
-        
+
         # Related URLs
         "Related_URL/URL_Content_Type/Type": _eval_builder('textList', ['Related_URL', 'URL_Content_Type', 'Type', 'text()']),
         # TODO: Add empty subtype if it does not exist.
