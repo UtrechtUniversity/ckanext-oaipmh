@@ -312,9 +312,9 @@ class OaipmhHarvester(HarvesterBase):
                 self._handle_datacite(content, context)
             elif self.md_format == 'iso':
                 self._handle_iso(content, context)
-            elif self.md_format == 'dif'
-            or self.md_format == 'oai_dc'
-            or self.md_format == 'oai_ddi':
+            elif (self.md_format == 'dif'
+               or self.md_format == 'oai_dc'
+               or self.md_format == 'oai_ddi'):
                 self._handle_nonEpos(content, context)
 
             # Add fields according to mapping
@@ -560,8 +560,8 @@ class OaipmhHarvester(HarvesterBase):
             access_constraints = ', '.join(content['Access_Constraints'])
             # TODO: Generalize in own function to check for both
             #       'Not available' and None value
-            if 'not available' not in use_constraints.lower()
-            and 'not available' not in access_constraints.lower():
+            if ('not available' not in use_constraints.lower()
+            and 'not available' not in access_constraints.lower()):
                 return '{0}, {1}'.format(use_constraints, access_constraints)
             elif 'not available' not in use_constraints.lower():
                 return use_constraints
