@@ -322,8 +322,8 @@ class OaipmhHarvester(HarvesterBase):
 
             for ckan_field, oai_field in mapping.iteritems():
                 try:
-                    if ckan_field == 'maintainer_email'
-                    and '@' not in content[oai_field][0]:
+                    if (ckan_field == 'maintainer_email'
+                    and '@' not in content[oai_field][0]):
                         # Email not available.
                         # Do not set email field as it will break validation.
                         continue
