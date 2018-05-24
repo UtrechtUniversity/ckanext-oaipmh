@@ -76,6 +76,8 @@ class OaipmhHarvester(HarvesterBase):
                 force_http_get=self.force_http_get
             )
 
+	    log.debug('URL: ' + harvest_job.source.url)	
+
             client.identify()  # check if identify works
             for header in self._identifier_generator(client):
                 harvest_obj = HarvestObject(
@@ -291,11 +293,35 @@ class OaipmhHarvester(HarvesterBase):
 
         try:
             self._set_config(harvest_object.job.source.config)
-            context = {
+
+	    # determine maintainer based on source.url
+	    # to be extended/refined in future	    
+	    urlsGFZ = ['http://doidb.wdc-terra.org/oaip/oai']
+	    urlsYODA = ['http://yoda.com/moai/blabla']
+
+	    if harvest_object.job.source.url in urlsGFZ:            
+	        maintainerInfo = {
+		    'name': 'GFZ Potzdam',
+		    'email': 'info@gfz-potzdam.de'	
+	        }
+	    elif harvest_object.job.source.url in urlsYODA:
+                maintainerInfo = {
+                    'name': 'YODA',
+                    'email': 'info@yoda.com'
+                }
+	    else:
+                maintainerInfo = {
+                    'name': harvest_object.job.source.url,
+                    'email': ''
+                }
+	
+
+	    context = {
                 'model': model,
                 'session': Session,
                 'user': self.user,
-                'ignore_auth': True  # TODO: Remove, just to test
+                'ignore_auth': True,  # TODO: Remove, just to test
+		'maintainerInfo': maintainerInfo
             }
 
             # main dictonary holding all package data
@@ -401,21 +427,37 @@ class OaipmhHarvester(HarvesterBase):
         self.package_dict['tags'] = content['tags']
 
         # MAINTAINER info - datacite for EPOS -
-        if content['contact']:
-            self.package_dict['maintainer'] = content['contact'][0] + '-' + content['contactAffiliation'][0]
-        if content['contactEmail']:
-            self.package_dict['maintainer_email'] = 'blabla@blabla.com'
+	# this is dependant on which repo is harvested. 
+	self.package_dict['maintainer']	= context['maintainerInfo']['name']
+	self.package_dict['maintainer_email'] = context['maintainerInfo']['email']
+
+	# Hoe heet dit dan?? -> moet naar extras
+	# if content['contact']:
+        #     self.package_dict['maintainer'] = content['contact'][0] + '-' + content['contactAffiliation'][0]
+        # if content['contactEmail']:
+        #    self.package_dict['maintainer_email'] = 'blabla@blabla.com'
 
         # EXTRAS - for datacite for EPOS -> KEYWORDS -> i.e. customization
         extras = []
 
+        if content['contact']:
+            extras.append(('Dataset contact',
+			content['contact'][0] + '-' + content['contactAffiliation'][0]))
+
         if content['created']:
-            extras.append(('Created',
+            extras.append(('Created at maintainer',
                            content['created'][0]))
         if content['publicationYear']:
             extras.append(('Year of publication',
                            content['publicationYear'][0]))
-        if content['supplementTo']:
+        
+	# fetch extra external information regarding supplement on DOI
+	# TITLE 
+	# AUTHOR
+	for doi in supplementTo:
+	    # request external info
+
+	if content['supplementTo']:
             extras.append(('Is supplement to',
                            ', '.join(content['supplementTo'])))
         if content['cites']:
