@@ -24,6 +24,8 @@ import traceback
 
 import unicodedata
 
+import requests
+
 log = logging.getLogger(__name__)
 
 
@@ -430,14 +432,8 @@ class OaipmhHarvester(HarvesterBase):
 	# this is dependant on which repo is harvested. 
 	self.package_dict['maintainer']	= context['maintainerInfo']['name']
 	self.package_dict['maintainer_email'] = context['maintainerInfo']['email']
-
-	# Hoe heet dit dan?? -> moet naar extras
-	# if content['contact']:
-        #     self.package_dict['maintainer'] = content['contact'][0] + '-' + content['contactAffiliation'][0]
-        # if content['contactEmail']:
-        #    self.package_dict['maintainer_email'] = 'blabla@blabla.com'
-
-        # EXTRAS - for datacite for EPOS -> KEYWORDS -> i.e. customization
+        
+	# EXTRAS - for datacite for EPOS -> KEYWORDS -> i.e. customization
         extras = []
 
         if content['contact']:
@@ -445,28 +441,47 @@ class OaipmhHarvester(HarvesterBase):
 			content['contact'][0] + '-' + content['contactAffiliation'][0]))
 
         if content['created']:
-            extras.append(('Created at maintainer',
+            extras.append(('Created at repository',
                            content['created'][0]))
         if content['publicationYear']:
             extras.append(('Year of publication',
                            content['publicationYear'][0]))
         
-	# fetch extra external information regarding supplement on DOI
-	# TITLE 
-	# AUTHOR
-	for doi in supplementTo:
-	    # request external info
+	# Fetch extra external information regarding supplement on DOI
+	urlDoiBaseGFZ = 'http://dataservices.gfz-potsdam.de/getcitationinfo.php?doi=http://dx.doi.org/'
 
-	if content['supplementTo']:
+	citationTypes = ['supplementTo', 'cites', 'references']
+	
+	# cites holds all externally collected info per citationType
+	cites = {
+		'supplementTo':'',
+		'cites': '',
+		'references': ''
+	}
+
+	for citationType in citationTypes:
+	    count = 0
+	    for doi in content[citationType]:
+		count += 1
+		r = requests.get(urlDoiBaseGFZ + doi)
+		citeData = json.loads(r.text)
+		#log.debug(citeData['citation'])
+		prefix = ''	
+		if count > 1:
+			prefix= ' -------- '
+		cites[citationType] += prefix + str(count) + ') ' + citeData['citation'] 
+	
+	if cites['supplementTo']:
             extras.append(('Is supplement to',
-                           ', '.join(content['supplementTo'])))
-        if content['cites']:
+                           cites['supplementTo']))
+        if cites['cites']:
             extras.append(('Cites',
-                           ', '.join(content['cites'])))
-        if content['references']:
+                            cites['cites']))
+        if cites['references']:
             extras.append(('References',
-                           ', '.join(content['references'])))
-        if content['westBoundLongitude']:
+                            cites['references']))
+        
+	if content['westBoundLongitude']:
             extras.append(('geobox-wLong',
                            content['westBoundLongitude'][0]))
         if content['eastBoundLongitude']:
