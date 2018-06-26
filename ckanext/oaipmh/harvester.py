@@ -254,7 +254,7 @@ class OaipmhHarvester(HarvesterBase):
             harvest_object.content = content
             harvest_object.save()
         except:
-            log.exception('Something went wrong!')
+            log.exception('Something went wrong 1!')
             self._save_object_error(
                 'Exception in fetch stage',
                 harvest_object
@@ -295,6 +295,8 @@ class OaipmhHarvester(HarvesterBase):
 
         try:
             self._set_config(harvest_object.job.source.config)
+
+	    log.debug("import - stage: url = " + harvest_object.job.source.url)
 
 	    # determine maintainer based on source.url
 	    # to be extended/refined in future	    
@@ -343,7 +345,7 @@ class OaipmhHarvester(HarvesterBase):
             elif (self.md_format == 'dif'
                or self.md_format == 'oai_dc'
                or self.md_format == 'oai_ddi'):
-                self._handle_nonEpos(content, context)
+                self._handle_nonEpos(content, context,harvest_object)
 
             # Add fields according to mapping
             mapping = self._get_mapping()
@@ -380,7 +382,7 @@ class OaipmhHarvester(HarvesterBase):
 
             Session.commit()
         except:
-            log.exception('Something went wrong!')
+            log.exception('Something went wrong 2!')
             self._save_object_error(
                 'Exception in import stage',
                 harvest_object
@@ -505,7 +507,7 @@ class OaipmhHarvester(HarvesterBase):
 
     # Handle data where metadata prefix in
     # (dif, oai_dc, oai_ddi) -> this is not EPOS oriented
-    def _handle_nonEpos(content, context):
+    def _handle_nonEpos(self, content, context, harvest_object):
         # AUTHOR
         self.package_dict['author'] = self._nonEpos_extract_author(content)
 
@@ -515,8 +517,8 @@ class OaipmhHarvester(HarvesterBase):
            {'id': harvest_object.source.id}
         )
         owner_org = source_dataset.get('owner_org')
-        #   log.debug(owner_org)
-        self.package_dict['owner_org'] = org_ids[0]
+        # log.debug(owner_org)
+        self.package_dict['owner_org'] = owner_org
 
         # LICENSE
         self.package_dict['license_id'] = self._nonEpos_extract_license_id(content)
@@ -706,8 +708,8 @@ class OaipmhHarvester(HarvesterBase):
             return resources
         else:
             resources = []
-            url = urls[0]
-            if url:
+            # url = urls[0]
+            if False: # url
                 try:
                     # TODO: Use _nonEpos_extract_formats to get format
                     resource_format = content['format'][0]
