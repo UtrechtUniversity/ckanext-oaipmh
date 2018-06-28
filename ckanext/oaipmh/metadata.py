@@ -53,6 +53,34 @@ class MetadataReader(object):
 
 
 # general fields for datacite as used by different readers
+datacite_ilabfields = {
+         'title':             ('textList', 'datacite:resource/datacite:titles/datacite:title/text()'),  # noqa
+         'description':       ('textList', 'datacite:resource/datacite:descriptions/datacite:description/text()'),
+         'creator':           ('textList', 'datacite:resource/datacite:creators/datacite:creator/datacite:creatorName/text()'),  # noqa
+         'rights':            ('textList', 'datacite:resource/datacite:rightsList/datacite:rights/text()'),  # noqa
+         'groups':            ('textList', 'datacite:resource/datacite:subjects/datacite:subject/text()'),
+         #'tags':              ('textList', 'datacite:resource/datacite:subjects/datacite:subject/text()'),
+         'doi':               ('textList', 'datacite:resource/datacite:identifier[@identifierType="DOI"]/text()'),
+         'created':           ('textList', 'datacite:resource/datacite:dates/datacite:date[@dateType="Created"]/text()'),
+	 'collectionPeriod':  ('textList', 'datacite:resource/datacite:dates/datacite:date[@dateType="Collected"]/text()'),
+         'publicationYear':   ('textList', 'datacite:resource/datacite:publicationYear/text()'),
+#        'supplementTo':      ('textList', 'default:resource/default:relatedIdentifiers/default:relatedIdentifier[@relatedIdentifierType="DOI" and @relationType="IsSupplementTo"]/text()'),
+#        'cites':             ('textList', 'default:resource/default:relatedIdentifiers/default:relatedIdentifier[@relatedIdentifierType="DOI" and @relationType="Cites"]/text()'),
+#        'references':        ('textList', 'default:resource/default:relatedIdentifiers/default:relatedIdentifier[@relatedIdentifierType="DOI" and @relationType="References"]/text()'),
+#        'westBoundLongitude':('textList', 'default:resource/default:geoLocations/default:geoLocation/default:geoLocationBox/default:westBoundLongitude/text()'),
+#        'eastBoundLongitude':('textList', 'default:resource/default:geoLocations/default:geoLocation/default:geoLocationBox/default:westBoundLongitude/text()'),
+#        'southBoundLatitude':('textList', 'default:resource/default:geoLocations/default:geoLocation/default:geoLocationBox/default:southBoundLatitude/text()'),
+#        'northBoundLatitude':('textList', 'default:resource/default:geoLocations/default:geoLocation/default:geoLocationBox/default:northBoundLatitude/text()'),
+         'contact':           ('textList', 'datacite:resource/datacite:contributors/datacite:contributor[@contributorType="ContactPerson"]/datacite:contributorName/text()'),
+#        'contactAffiliation':('textList', 'default:resource/default:contributors/default:contributor[@contributorType="ContactPerson"]/default:affiliation/text()'),
+        'contactEmail':      ('textList', 'datacite:resource/datacite:titles/datacite:title/text()'),
+        'publisher':         ('textList', 'datacite:resource/datacite:publisher/text()'),
+        'organizations':     ('textList', 'datacite:resource/datacite:contributors/datacite:contributor[@contributorType="HostingInstitution"]/datacite:contributorName/text()'),
+        'orgAffiliations':    ('textList', 'datacite:resource/datacite:contributors/datacite:contributor[@contributorType="HostingInstitution"]/datacite:affiliation/text()'),
+        'geolocationPlaces':  ('textList', 'datacite:resource/datacite:geoLocations/datacite:geoLocation/datacite:geoLocationPlace/text()'),
+    }
+
+
 datacite_fields = {
         'title':             ('textList', 'default:resource/default:titles/default:title/text()'),  # noqa
         'description':       ('textList', 'default:resource/default:descriptions/default:description/text()'),  # noqa
@@ -88,9 +116,17 @@ datacite_reader3 = MetadataReader(
 datacite_reader4 = MetadataReader(
     fields =  datacite_fields,
     namespaces={
-        'default': 'http://datacite.org/schema/kernel-4'
+        'datacite': 'http://datacite.org/schema/kernel-4',
     }
 )
+
+datacite_ilab = MetadataReader(
+    fields =  datacite_ilabfields,
+    namespaces={
+        'datacite': 'http://datacite.org/schema/kernel-4',
+    }
+)
+
 
 
 oai_ddi_reader = MetadataReader(

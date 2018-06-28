@@ -18,6 +18,7 @@ from metadata import oai_ddi_reader
 from metadata import oai_dc_reader
 from metadata import dif_reader, dif_reader2
 from metadata import datacite_reader3, datacite_reader4
+from metadata import datacite_ilab
 from pprint import pprint
 
 import traceback
@@ -139,13 +140,16 @@ class OaipmhHarvester(HarvesterBase):
         registry = MetadataRegistry()
 
         if self.md_format == 'datacite':
-            if self.additional_info == 'kernel3':
-                registry.registerReader(self.md_format, datacite_reader3)
-                log.debug('->datacite_reader3')
-            else:
-                registry.registerReader(self.md_format, datacite_reader4)
-                log.debug('->datacite_reader4')
-
+            if self.md_application == 'EPOS':
+                if self.additional_info == 'kernel3':
+                    registry.registerReader(self.md_format, datacite_reader3)
+                    log.debug('->datacite_reader3')
+                else:
+                    registry.registerReader(self.md_format, datacite_reader4)
+                    log.debug('->datacite_reader4')
+	    elif self.md_application == 'ILAB':
+                registry.registerReader(self.md_format, datacite_ilab)
+                log.debug('->datacite ILAB reader')
         else:
             registry.registerReader('oai_dc', oai_dc_reader)
             registry.registerReader('oai_ddi', oai_ddi_reader)
@@ -171,7 +175,11 @@ class OaipmhHarvester(HarvesterBase):
             self.user = 'harvest'
             self.set_spec = config_json.get('set', None)
             self.md_format = config_json.get('metadata_prefix', 'datacite')
-            # Additional info adds possibities to differentiate
+            # Differentiation for the metadata handling methods.
+	    # In essence now there are only two tastes: ILAB and EPOS (which is default).
+            self.md_application =  config_json.get('application', 'EPOS')
+
+            # Additional info adds possibities to differentiate - this is in essence only for EPOS 
             # within a metadata_prefix.
             # Maybe call this variable namespace_info.
             self.additional_info = config_json.get('additional_info',
@@ -226,6 +234,8 @@ class OaipmhHarvester(HarvesterBase):
                 return False
 
             header, metadata, _ = record
+
+            log.debug(record)
 
             try:
                 metadata_modified = header.datestamp().isoformat()
@@ -298,34 +308,11 @@ class OaipmhHarvester(HarvesterBase):
 
 	    log.debug("import - stage: url = " + harvest_object.job.source.url)
 
-	    # determine maintainer based on source.url
-	    # to be extended/refined in future	    
-	    urlsGFZ = ['http://doidb.wdc-terra.org/oaip/oai']
-	    urlsYODA = ['http://yoda.com/moai/blabla']
-
-	    if harvest_object.job.source.url in urlsGFZ:            
-	        maintainerInfo = {
-		    'name': 'GFZ Potzdam',
-		    'email': 'info@gfz-potzdam.de'	
-	        }
-	    elif harvest_object.job.source.url in urlsYODA:
-                maintainerInfo = {
-                    'name': 'YODA',
-                    'email': 'info@yoda.com'
-                }
-	    else:
-                maintainerInfo = {
-                    'name': harvest_object.job.source.url,
-                    'email': ''
-                }
-	
-
 	    context = {
                 'model': model,
                 'session': Session,
                 'user': self.user,
-                'ignore_auth': True,  # TODO: Remove, just to test
-		'maintainerInfo': maintainerInfo
+                'ignore_auth': True  # TODO: Remove, just to test
             }
 
             # main dictonary holding all package data
@@ -333,13 +320,18 @@ class OaipmhHarvester(HarvesterBase):
 
             content = json.loads(harvest_object.content)
 
+	    log.debug(content)
+
             self.package_dict['id'] = munge_title_to_name(harvest_object.guid)
             self.package_dict['name'] = self.package_dict['id']
 
             # Differentiate further package creation
             # dependent on metadataPrefix.
             if self.md_format == 'datacite':
-                self._handle_datacite(content, context)
+                if self.md_application == 'EPOS': # default
+                    self._handle_dataciteEPOS(content, context)
+                elif self.md_application == 'ILAB':
+                    self._handle_dataciteILAB(content, context)
             elif self.md_format == 'iso':
                 self._handle_iso(content, context)
             elif (self.md_format == 'dif'
@@ -362,6 +354,8 @@ class OaipmhHarvester(HarvesterBase):
 
                 except (IndexError, KeyError):
                     continue
+
+            log.debug('after mapping execution')
 
             '''
             When using Datacite 3 / 4 this delivers an object queue
@@ -390,8 +384,82 @@ class OaipmhHarvester(HarvesterBase):
             return False
         return True
 
-    # handle data where metadata prefix = datacite
-    def _handle_datacite(self, content, context):
+
+    # handle data where metadata prefix = datacite for ILAB application
+    def _handle_dataciteILAB(self, content, context):
+        # AUTHOR
+        self.package_dict['author'] = ', '.join(content['creator'])
+
+        # ORGANIZATION (LABS->datacite)
+        organizations = [u'Unidentified']  # default value, possibly unwanted
+
+        if content['orgAffiliations']:
+            organizations = content['orgAffiliations']
+        elif content['organizations']:
+            organizations = content['organizations']
+
+        org_ids = self._find_or_create_entity('organization',
+                                              organizations, context)
+        self.package_dict['owner_org'] = org_ids[0]
+
+        # HDR -> voor datacite niet juist geimplmenteerd
+        self.package_dict['formats'] = 'datacite'
+
+        # URL - datacite
+        if content['doi']:
+            # hardcoded now, do inventory where to find this
+            self.package_dict['url'] = 'http://doi.org/' + content['doi'][0]
+
+        # GROUPS/TOPICS
+        groups = []
+        # create groups based on subjects
+        if content['groups']:
+            log.debug('subjects: %s' % content['groups'])
+            groups.extend(
+                    self._find_or_create_entity('group',
+                                                content['groups'],
+                                                context)
+            )
+        self.package_dict['groups'] = groups
+
+        # TAGS-Datacite
+        #self.package_dict['tags'] = content['tags']
+
+        # MAINTAINER info - datacite for ILAB - harcoded
+        self.package_dict['maintainer'] = 'Utrecht University'
+        self.package_dict['maintainer_email'] = 'info@uu.nl'
+
+        # EXTRAS - for datacite for EPOS -> KEYWORDS -> i.e. customization
+        extras = []
+
+        if content['geolocationPlaces']:
+            extras.append(('Locations covered',
+                        ', '.join(content['geolocationPlaces'])))
+
+        if content['contact']:
+            extras.append(('Dataset contact',
+                        content['contact'][0] + '-' + content['contactAffiliation'][0]))
+
+        if content['created']:
+            extras.append(('Created at repository',
+                           content['created'][0]))
+        if content['publicationYear']:
+            extras.append(('Year of publication',
+                           content['publicationYear'][0]))
+
+        if content['publisher']:
+            extras.append(('Publisher', content['publisher'][0]))
+        
+        if content['collectionPeriod']:
+            extras.append(('Collection period', content['collectionPeriod'][0]))
+
+ 
+
+        self.package_dict['extras'] = extras
+
+
+    # handle data where metadata prefix = datacite for EPOS application
+    def _handle_dataciteEPOS(self, content, context):
         # AUTHOR
         self.package_dict['author'] = ', '.join(content['creator'])
 
@@ -430,11 +498,11 @@ class OaipmhHarvester(HarvesterBase):
         # TAGS-Datacite
         self.package_dict['tags'] = content['tags']
 
-        # MAINTAINER info - datacite for EPOS -
-	# this is dependant on which repo is harvested. 
-	self.package_dict['maintainer']	= context['maintainerInfo']['name']
-	self.package_dict['maintainer_email'] = context['maintainerInfo']['email']
-        
+	# MAINTAINER info - datacite for EPOS - hardcoded
+	self.package_dict['maintainer']	= 'GFZ Potzdam'
+	self.package_dict['maintainer_email'] = 'info@gfz-potzdam.de'
+
+ 
 	# EXTRAS - for datacite for EPOS -> KEYWORDS -> i.e. customization
         extras = []
 
@@ -464,14 +532,14 @@ class OaipmhHarvester(HarvesterBase):
 	for citationType in citationTypes:
 	    count = 0
 	    for doi in content[citationType]:
-		count += 1
+	        count += 1
 		r = requests.get(urlDoiBaseGFZ + doi)
 		citeData = json.loads(r.text)
 		#log.debug(citeData['citation'])
 		prefix = ''	
 		if count > 1:
-			prefix= ' -------- '
-		cites[citationType] += prefix + str(count) + ') ' + citeData['citation'] 
+		    prefix= ' -------- '
+		    cites[citationType] += prefix + str(count) + ') ' + citeData['citation'] 
 	
 	if cites['supplementTo']:
             extras.append(('Is supplement to',
