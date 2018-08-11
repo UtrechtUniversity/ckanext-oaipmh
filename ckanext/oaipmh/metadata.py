@@ -116,7 +116,7 @@ datacite_reader3 = MetadataReader(
 datacite_reader4 = MetadataReader(
     fields =  datacite_fields,
     namespaces={
-        'datacite': 'http://datacite.org/schema/kernel-4',
+        'default': 'http://datacite.org/schema/kernel-4',
     }
 )
 

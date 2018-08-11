@@ -147,6 +147,7 @@ class OaipmhHarvester(HarvesterBase):
                 else:
                     registry.registerReader(self.md_format, datacite_reader4)
                     log.debug('->datacite_reader4')
+                    log.debug(registry)
 	    elif self.md_application == 'ILAB':
                 registry.registerReader(self.md_format, datacite_ilab)
                 log.debug('->datacite ILAB reader')
@@ -204,13 +205,19 @@ class OaipmhHarvester(HarvesterBase):
         :param harvest_object: HarvestObject object
         :returns: True if everything went right, False if errors were found
         '''
-        # log.debug("HDR: Fetch url %s" % harvest_object.job.source.url)
+        log.debug("HDR: Fetch url %s" % harvest_object.job.source.url)
 
         try:
             self._set_config(harvest_object.job.source.config)
             # Registry creation is dependant on job.source.config
             # because of differentiation possibilities in
             # namespaces for equal md_prefix.
+
+
+            log.debug('Application: ' + self.md_application)
+	    log.debug('Md_format: ' + self.md_format)
+	    log.debug('AddInfo: ' + self.additional_info)
+
             registry = self._create_metadata_registry()
             client = oaipmh.client.Client(
                 harvest_object.job.source.url,
@@ -388,7 +395,7 @@ class OaipmhHarvester(HarvesterBase):
     # handle data where metadata prefix = datacite for ILAB application
     def _handle_dataciteILAB(self, content, context):
         # AUTHOR
-        self.package_dict['author'] = ', '.join(content['creator'])
+        self.package_dict['author'] = '; '.join(content['creator'])
 
         # ORGANIZATION (LABS->datacite)
         organizations = [u'Unidentified']  # default value, possibly unwanted
@@ -461,7 +468,9 @@ class OaipmhHarvester(HarvesterBase):
     # handle data where metadata prefix = datacite for EPOS application
     def _handle_dataciteEPOS(self, content, context):
         # AUTHOR
-        self.package_dict['author'] = ', '.join(content['creator'])
+        self.package_dict['author'] = '; '.join(content['creator'])
+
+	self.package_dict['author_email'] = 'info@blabla.com'
 
         # ORGANIZATION (LABS->datacite)
         organizations = [u'Unidentified']  # default value, possibly unwanted
@@ -500,7 +509,7 @@ class OaipmhHarvester(HarvesterBase):
 
 	# MAINTAINER info - datacite for EPOS - hardcoded
 	self.package_dict['maintainer']	= 'GFZ Potzdam'
-	self.package_dict['maintainer_email'] = 'info@gfz-potzdam.de'
+	self.package_dict['maintainer_email'] = 'info@gfz.de'
 
  
 	# EXTRAS - for datacite for EPOS -> KEYWORDS -> i.e. customization
@@ -508,7 +517,7 @@ class OaipmhHarvester(HarvesterBase):
 
         if content['contact']:
             extras.append(('Dataset contact',
-			content['contact'][0] + '-' + content['contactAffiliation'][0]))
+			content['contact'][0] + ' - ' + content['contactAffiliation'][0]))
 
         if content['created']:
             extras.append(('Created at repository',
@@ -539,7 +548,7 @@ class OaipmhHarvester(HarvesterBase):
 		prefix = ''	
 		if count > 1:
 		    prefix= ' -------- '
-		    cites[citationType] += prefix + str(count) + ') ' + citeData['citation'] 
+	        cites[citationType] += prefix + str(count) + ') ' + citeData['citation'] 
 	
 	if cites['supplementTo']:
             extras.append(('Is supplement to',
