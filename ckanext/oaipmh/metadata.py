@@ -58,8 +58,8 @@ datacite_ilabfields = {
          'description':       ('textList', 'datacite:resource/datacite:descriptions/datacite:description/text()'),
          'creator':           ('textList', 'datacite:resource/datacite:creators/datacite:creator/datacite:creatorName/text()'),  # noqa
          'rights':            ('textList', 'datacite:resource/datacite:rightsList/datacite:rights/text()'),  # noqa
-         'groups':            ('textList', 'datacite:resource/datacite:subjects/datacite:subject/text()'),
-         #'tags':              ('textList', 'datacite:resource/datacite:subjects/datacite:subject/text()'),
+         'groups':            ('textList', 'datacite:resource/datacite:subjects/datacite:subject[@subjectScheme="Keyword"]/text()'),
+         'tags':              ('textList', 'datacite:resource/datacite:subjects/datacite:subject[@subjectScheme="OECD FOS 2007"]/text()'),
          'doi':               ('textList', 'datacite:resource/datacite:identifier[@identifierType="DOI"]/text()'),
          'created':           ('textList', 'datacite:resource/datacite:dates/datacite:date[@dateType="Created"]/text()'),
 	 'collectionPeriod':  ('textList', 'datacite:resource/datacite:dates/datacite:date[@dateType="Collected"]/text()'),

@@ -430,7 +430,18 @@ class OaipmhHarvester(HarvesterBase):
         self.package_dict['groups'] = groups
 
         # TAGS-Datacite
-        #self.package_dict['tags'] = content['tags']
+	log.debug('Tags:')
+        log.debug(content['tags'])
+	x = content['tags']
+	x = [s.replace('(', '') for s in x]
+	x = [s.replace(')', '') for s in x]
+
+	self.package_dict['tags'] = x
+
+        # LICENSE
+        self.package_dict['license_id'] = content['rights'][0]
+
+
 
         # MAINTAINER info - datacite for ILAB - harcoded
         self.package_dict['maintainer'] = 'Utrecht University'
