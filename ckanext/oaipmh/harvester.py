@@ -483,17 +483,35 @@ class OaipmhHarvester(HarvesterBase):
 
 	self.package_dict['author_email'] = 'info@blabla.com'
 
-        # ORGANIZATION (LABS->datacite)
-        organizations = [u'Unidentified']  # default value, possibly unwanted
+        # ORGANIZATION (LABS in EPOS)
+        # Prepare organizations list with default value as last possibility
+	organizations = []
 
         if content['orgAffiliations']:
             organizations = content['orgAffiliations']
         elif content['organizations']:
             organizations = content['organizations']
 
-        org_ids = self._find_or_create_entity('organization',
+	#organizations = [u'BLA', u'Unidentified']
+        #organizations.append(u'Unidentified') # Add default value as a latest resort if no organization was recognized 
+
+	# organizations = []
+
+        #organizations.append(u'Blabla')
+	#organizations.append(u'INGV, Italy')
+	#organizations.append(u'Unidentified')
+
+
+        org_id = self._find_first_entity('organization',
                                               organizations, context)
-        self.package_dict['owner_org'] = org_ids[0]
+        log.debug('found org:' + org_id)
+# 	if not found, find 'Other lab'
+        if org_id=='-1':
+	    organizations = [u'Other lab'] #[u'Unidentified']
+	    org_id = self._find_first_entity('organization',
+                                              organizations, context)
+	
+	self.package_dict['owner_org'] = org_id
 
         # HDR -> voor datacite niet juist geimplmenteerd
         self.package_dict['formats'] = 'datacite'
@@ -823,6 +841,34 @@ class OaipmhHarvester(HarvesterBase):
                 context
             )
         return []
+
+
+    # For EPOS - do not create new entities but fall back to default if not found .
+    # in EPOS case used for Labs (i.e. groups)
+    def _find_first_entity(self, entityType, entityNames, context):
+	log.debug(entityType + ' names: %s' % entityNames)
+        entityId = '-1'   # Not found
+        for entity_name in entityNames:
+ 	    log.debug('labname: ' + entity_name)
+            data_dict = {
+                'id': self._utf8_and_remove_diacritics(entity_name),
+                'name': munge_title_to_name(entity_name),
+                'title': entity_name
+            }
+            try:
+ 	        log.debug(data_dict)
+                entity = get_action(entityType + '_show')(context, data_dict)
+                log.info('Try: found the ' + entityType + ' with id' + entity['id'])
+                entityId = entity['id']
+                break
+            except:
+	    	log.info('Exception: ' + entity_name)
+	        continue
+
+        #log.info('kom ik hier dan wel?' + entityId)
+	return entityId
+
+
 
     # generic function for finding/creation of multiple entities (groups/organizations)
     def _find_or_create_entity(self, entityType, entityNames, context):
