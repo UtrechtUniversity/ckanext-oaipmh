@@ -106,6 +106,34 @@ datacite_fields = {
         'orgAffiliations':    ('textList', 'default:resource/default:contributors/default:contributor[@contributorType="HostingInstitution"]/default:affiliation/text()')
     }
 
+
+iso13139_fields = {
+        'title':             ('textList', '/gmd:MD_Metadata/gmd:identificationInfo/gmd:MD_DataIdentification/gmd:citation/gmd:CI_Citation/gmd:title/gco:CharacterString'),
+        'description':       ('textList', '/gmd:MD_Metadata/gmd:identificationInfo/gmd:MD_DataIdentification/gmd:abstract/gco:CharacterString'),
+        'creator':           ('textList', 'string-join(/gmd:MD_Metadata/gmd:identificationInfo/gmd:MD_DataIdentification/gmd:citation/gmd:CI_Citation/gmd:citedResponsibleParty/gmd:CI_ResponsibleParty[gmd:role/gmd:CI_RoleCode[text()="author"]]/gmd:individualName/gco:CharacterString, ' (', /gmd:MD_Metadata/gmd:identificationInfo/gmd:MD_DataIdentification/gmd:citation/gmd:CI_Citation/gmd:citedResponsibleParty/gmd:CI_ResponsibleParty[gmd:role/gmd:CI_RoleCode[text()="author"]]/gmd:organisationName/gco:CharacterString, ') ', ';')'), 
+        'rights':            ('textList', ''), 
+        'groups':            ('textList', ''),
+        'tags':              ('textList', ''),
+        'doi':               ('textList', 'default:resource/default:identifier[@identifierType="DOI"]/text()'),
+        'created':           ('textList', 'default:resource/default:dates/default:date[@dateType="Created"]/text()'),
+        'publicationYear':   ('textList', 'default:resource/default:publicationYear/text()'),
+        'supplementTo':      ('textList', 'default:resource/default:relatedIdentifiers/default:relatedIdentifier[@relatedIdentifierType="DOI" and @relationType="IsSupplementTo"]/text()'),
+        'cites':             ('textList', 'default:resource/default:relatedIdentifiers/default:relatedIdentifier[@relatedIdentifierType="DOI" and @relationType="Cites"]/text()'),
+        'references':        ('textList', 'default:resource/default:relatedIdentifiers/default:relatedIdentifier[@relatedIdentifierType="DOI" and @relationType="References"]/text()'),
+        'westBoundLongitude':('textList', '/gmd:MD_Metadata/gmd:identificationInfo/gmd:MD_DataIdentification/gmd:extent/gmd:EX_Extent/gmd:geographicElement/gmd:EX_GeographicBoundingBox/gmd:westBoundLongitude/gco:Decimal'),
+        'eastBoundLongitude':('textList', '/gmd:MD_Metadata/gmd:identificationInfo/gmd:MD_DataIdentification/gmd:extent/gmd:EX_Extent/gmd:geographicElement/gmd:EX_GeographicBoundingBox/gmd:eastBoundLongitude/gco:Decimal'),
+        'southBoundLatitude':('textList', '/gmd:MD_Metadata/gmd:identificationInfo/gmd:MD_DataIdentification/gmd:extent/gmd:EX_Extent/gmd:geographicElement/gmd:EX_GeographicBoundingBox/gmd:southBoundLatitude/gco:Decimal'),
+        'northBoundLatitude':('textList', ''),
+        'contact':           ('textList', 'default:resource/default:contributors/default:contributor[@contributorType="ContactPerson"]/default:contributorName/text()'),
+        'contactAffiliation':('textList', 'default:resource/default:contributors/default:contributor[@contributorType="ContactPerson"]/default:affiliation/text()'),
+        'contactEmail':      ('textList', 'default:resource/default:titles/default:title/text()'),
+        'publisher':         ('textList', 'default:resource/default:publisher/text()'),
+        'organizations':     ('textList', 'default:resource/default:contributors/default:contributor[@contributorType="HostingInstitution"]/default:contributorName/text()'),
+        'orgAffiliations':    ('textList', 'default:resource/default:contributors/default:contributor[@contributorType="HostingInstitution"]/default:affiliation/text()')
+    }
+
+
+
 datacite_reader3 = MetadataReader(
     fields =  datacite_fields,
     namespaces={
@@ -117,6 +145,16 @@ datacite_reader4 = MetadataReader(
     fields =  datacite_fields,
     namespaces={
         'default': 'http://datacite.org/schema/kernel-4',
+    }
+)
+
+
+iso13139_reader = MetadataRead(
+    fields =  iso13139_fields,
+    namespaces={
+	'gmd': '', 
+	'gco': '',
+        'default': 'http://datacite.org/schema/kernel-4', # ??? which namespace????
     }
 )
 

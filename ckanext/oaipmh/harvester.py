@@ -19,6 +19,7 @@ from metadata import oai_dc_reader
 from metadata import dif_reader, dif_reader2
 from metadata import datacite_reader3, datacite_reader4
 from metadata import datacite_ilab
+from metadata import iso19139_reader
 from pprint import pprint
 
 import traceback
@@ -139,7 +140,10 @@ class OaipmhHarvester(HarvesterBase):
     def _create_metadata_registry(self):
         registry = MetadataRegistry()
 
-        if self.md_format == 'datacite':
+        if self.md_format == 'iso19139':
+	    registry.registerReader(self.md_format, iso19139_reader)
+            log.debug('Format -> iso19139')
+	elif self.md_format == 'datacite':
             if self.md_application == 'EPOS':
                 if self.additional_info == 'kernel3':
                     registry.registerReader(self.md_format, datacite_reader3)
