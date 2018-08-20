@@ -107,25 +107,78 @@ datacite_fields = {
     }
 
 
-iso13139_fields = {
+iso19139_fields_II= {
+        'title':             ('textList', 'gmd:MD_Metadata/gmd:identificationInfo/gmd:MD_DataIdentification/gmd:citation/gmd:CI_Citation/gmd:title/gco:CharacterString/text()'),
+        'description':       ('textList', 'gmd:MD_Metadata/gmd:identificationInfo/gmd:MD_DataIdentification/gmd:abstract/gco:CharacterString/text()'),
+	'creator': 	     ('textList', '/gmd:MD_Metadata/gmd:identificationInfo/gmd:MD_DataIdentification/gmd:citation/gmd:CI_Citation/gmd:title/gco:CharacterString'),	
+        #'creator':           ('textList', 'string-join(/gmd:MD_Metadata/gmd:identificationInfo/gmd:MD_DataIdentification/gmd:citation/gmd:CI_Citation/gmd:citedResponsibleParty/gmd:CI_ResponsibleParty[gmd:role/gmd:CI_RoleCode[text()="author"]]/gmd:individualName/gco:CharacterString, " (", /gmd:MD_Metadata/gmd:identificationInfo/gmd:MD_DataIdentification/gmd:citation/gmd:CI_Citation/gmd:citedResponsibleParty/gmd:CI_ResponsibleParty[gmd:role/gmd:CI_RoleCode[text()="author"]]/gmd:organisationName/gco:CharacterString, ") ", ";")'),
+	
+	'orgAffiliations':    ('textList', '/gmd:MD_Metadata/gmd:identificationInfo/gmd:MD_DataIdentification/gmd:citation/gmd:CI_Citation/gmd:title/gco:CharacterString'),
+        'organizations':     ('textList', '/gmd:MD_Metadata/gmd:identificationInfo/gmd:MD_DataIdentification/gmd:citation/gmd:CI_Citation/gmd:citedResponsibleParty/gmd:CI_ResponsibleParty[gmd:role/gmd:CI_RoleCode[text()="originator"]]/gmd:organisationName/gco:CharacterString'),
+        'doi':               ('textList', '/gmd:MD_Metadata/gmd:identificationInfo/gmd:MD_DataIdentification/gmd:citation/gmd:CI_Citation/gmd:identifier/gmd:MD_Identifier/gmd:code/gco:CharacterString'),
+        #'groups':            ('textList', '/gmd:MD_Metadata/gmd:identificationInfo/gmd:MD_DataIdentification/gmd:descriptiveKeywords/gmd:MD_Keywords/gmd:keyword/gco:CharacterString[text()="rock and melt physical properties" OR text()="analogue models of geologic processes" OR text()="paleomagnetic and magnetic data" OR text()="Geochemical data (elemental and isotope geochemistry)" ]'),
+
+}
+
+
+iso19139_fields = {
+        'title':             ('textList', 'gmd:MD_Metadata/gmd:identificationInfo/gmd:MD_DataIdentification/gmd:citation/gmd:CI_Citation/gmd:title/gco:CharacterString/text()'),
+        'description':       ('textList', 'gmd:MD_Metadata/gmd:identificationInfo/gmd:MD_DataIdentification/gmd:abstract/gco:CharacterString/text()'),
+#        'creator': 	     ('textList', 'gmd:MD_Metadata/gmd:identificationInfo/gmd:MD_DataIdentification/gmd:citation/gmd:CI_Citation/gmd:title/gco:CharacterString/text()'),
+
+        'creator':           ('textList', 'concat(gmd:MD_Metadata/gmd:identificationInfo/gmd:MD_DataIdentification/gmd:citation/gmd:CI_Citation/gmd:citedResponsibleParty/gmd:CI_ResponsibleParty[gmd:role/gmd:CI_RoleCode[text()="author"]]/gmd:individualName/gco:CharacterString/text(), " (", gmd:MD_Metadata/gmd:identificationInfo/gmd:MD_DataIdentification/gmd:citation/gmd:CI_Citation/gmd:citedResponsibleParty/gmd:CI_ResponsibleParty[gmd:role/gmd:CI_RoleCode[text()="author"]]/gmd:organisationName/gco:CharacterString/text(), ") ")'),
+
+        'rights':            ('textList', 'gmd:MD_Metadata/gmd:identificationInfo/gmd:MD_DataIdentification/gmd:resourceConstraints/gmd:MD_Constraints/gmd:useLimitation/gco:CharacterString/text()'),
+        'groups':	     ('textList', 'gmd:MD_Metadata/gmd:identificationInfo/gmd:MD_DataIdentification/gmd:descriptiveKeywords/gmd:MD_Keywords/gmd:keyword/gco:CharacterString[text()="rock and melt physical properties" or text()="analogue models of geologic processes" or text()="paleomagnetic and magnetic data" or text()="Geochemical data (elemental and isotope geochemistry)" ]/text()'),
+	'tags':              ('textList', 'gmd:MD_Metadata/gmd:identificationInfo/gmd:MD_DataIdentification/gmd:descriptiveKeywords/gmd:MD_Keywords/gmd:keyword/gco:CharacterString/text()'),
+        'doi':               ('textList', 'gmd:MD_Metadata/gmd:identificationInfo/gmd:MD_DataIdentification/gmd:citation/gmd:CI_Citation/gmd:identifier/gmd:MD_Identifier/gmd:code/gco:CharacterString/text()'),
+        'created':           ('textList', 'gmd:MD_Metadata/gmd:identificationInfo/gmd:MD_DataIdentification/gmd:citation/gmd:CI_Citation/gmd:date/gmd:CI_Date[gmd:dateType/gmd:CI_DateTypeCode[text()="creation"]]/gmd:date/gco:Date/text()'),
+        'publicationYear':   ('textList', 'gmd:MD_Metadata/gmd:identificationInfo/gmd:MD_DataIdentification/gmd:citation/gmd:CI_Citation/gmd:date/gmd:CI_Date/gmd:date/gco:Date/text()'),
+
+
+        'supplementTo':      ('textList', 'gmd:MD_Metadata/gmd:identificationInfo/gmd:MD_DataIdentification/gmd:aggregationInfo/gmd:MD_AggregateInformation[gmd:associationType/gmd:DS_AssociationTypeCode[text()="IsSupplementTo"]]/gmd:aggregateDataSetIdentifier/gmd:RS_Identifier[gmd:codeSpace/gco:CharacterString[text()="DOI"]]/gmd:code/gco:CharacterString/text()'),
+
+        'references':      ('textList', 'gmd:MD_Metadata/gmd:identificationInfo/gmd:MD_DataIdentification/gmd:aggregationInfo/gmd:MD_AggregateInformation[gmd:associationType/gmd:DS_AssociationTypeCode[text()="References"]]/gmd:aggregateDataSetIdentifier/gmd:RS_Identifier[gmd:codeSpace/gco:CharacterString[text()="DOI"]]/gmd:code/gco:CharacterString/text()'),
+
+        'cites':      ('textList', 'gmd:MD_Metadata/gmd:identificationInfo/gmd:MD_DataIdentification/gmd:aggregationInfo/gmd:MD_AggregateInformation[gmd:associationType/gmd:DS_AssociationTypeCode[text()="Cites"]]/gmd:aggregateDataSetIdentifier/gmd:RS_Identifier[gmd:codeSpace/gco:CharacterString[text()="DOI"]]/gmd:code/gco:CharacterString/text()'),
+
+
+#	'cites':             ('textList', 'gmd:MD_Metadata/gmd:identificationInfo/gmd:MD_DataIdentification/gmd:aggregationInfo/gmd:MD_AggregateInformation[gmd:associationType/gmd:DS_AssociationTypeCode[text()="Cites"]]/gmd:aggregateDataSetIdentifier/gmd:RS_Identifier[gmd:codeSpace/gco:CharacterString[text()="DOI"]]/gmd:code/gco:CharacterString/text()'),
+
+#	'references':        ('textList', 'gmd:MD_Metadata/gmd:identificationInfo/gmd:MD_DataIdentification/gmd:aggregationInfo/gmd:MD_AggregateInformation[gmd:associationType/gmd:DS_AssociationTypeCode[text()="References"]]/gmd:aggregateDataSetIdentifier/gmd:RS_Identifier[gmd:codeSpace/gco:CharacterString[text()="DOI"]]/gmd:code/gco:CharacterString/text()'),
+
+        'westBoundLongitude':('textList', 'gmd:MD_Metadata/gmd:identificationInfo/gmd:MD_DataIdentification/gmd:extent/gmd:EX_Extent/gmd:geographicElement/gmd:EX_GeographicBoundingBox/gmd:westBoundLongitude/gco:Decimal/text()'),
+        'eastBoundLongitude':('textList', 'gmd:MD_Metadata/gmd:identificationInfo/gmd:MD_DataIdentification/gmd:extent/gmd:EX_Extent/gmd:geographicElement/gmd:EX_GeographicBoundingBox/gmd:eastBoundLongitude/gco:Decimal/text()'),
+        'southBoundLatitude':('textList', 'gmd:MD_Metadata/gmd:identificationInfo/gmd:MD_DataIdentification/gmd:extent/gmd:EX_Extent/gmd:geographicElement/gmd:EX_GeographicBoundingBox/gmd:southBoundLatitude/gco:Decimal/text()'),
+        'northBoundLatitude':('textList', 'gmd:MD_Metadata/gmd:identificationInfo/gmd:MD_DataIdentification/gmd:extent/gmd:EX_Extent/gmd:geographicElement/gmd:EX_GeographicBoundingBox/gmd:northBoundLatitude/gco:Decimal/text()'),
+	'contact':           ('textList', 'concat(gmd:MD_Metadata/gmd:identificationInfo/gmd:MD_DataIdentification/gmd:pointOfContact/gmd:CI_ResponsibleParty[gmd:role/gmd:CI_RoleCode[text()="pointOfContact"]]/gmd:individualName/gco:CharacterString/text(), " (", gmd:MD_Metadata/gmd:identificationInfo/gmd:MD_DataIdentification/gmd:pointOfContact/gmd:CI_ResponsibleParty[gmd:role/gmd:CI_RoleCode[text()="pointOfContact"]]/gmd:organisationName/gco:CharacterString/text(), ") ", gmd:MD_Metadata/gmd:identificationInfo/gmd:MD_DataIdentification/gmd:pointOfContact/gmd:CI_ResponsibleParty[gmd:role/gmd:CI_RoleCode[text()="pointOfContact"]]/gmd:contactInfo/gmd:CI_Contact/gmd:address/gmd:CI_Address/gmd:electronicMailAddress/gco:CharacterString/text())'),
+        'contactAffiliation':('textList', 'gmd:MD_Metadata/gmd:identificationInfo/gmd:MD_DataIdentification/gmd:citation/gmd:CI_Citation/gmd:title/gco:CharacterString/text()'),
+        'contactEmail':      ('textList', 'gmd:MD_Metadata/gmd:identificationInfo/gmd:MD_DataIdentification/gmd:citation/gmd:CI_Citation/gmd:title/gco:CharacterString/text()'),
+        'publisher':         ('textList', 'gmd:MD_Metadata/gmd:contact/gmd:CI_ResponsibleParty/gmd:contactInfo/gmd:CI_Contact/gmd:onlineResource/gmd:CI_OnlineResource/gmd:linkage/gmd:URL/text()'),
+	'organizations':     ('textList', 'gmd:MD_Metadata/gmd:identificationInfo/gmd:MD_DataIdentification/gmd:citation/gmd:CI_Citation/gmd:citedResponsibleParty/gmd:CI_ResponsibleParty[gmd:role/gmd:CI_RoleCode[text()="originator"]]/gmd:organisationName/gco:CharacterString/text()'), 
+        'orgAffiliations':   ('textList', 'gmd:MD_Metadata/gmd:identificationInfo/gmd:MD_DataIdentification/gmd:citation/gmd:CI_Citation/gmd:title/gco:CharacterString/text()')
+    }
+
+
+
+iso19139_fields__org = {
         'title':             ('textList', '/gmd:MD_Metadata/gmd:identificationInfo/gmd:MD_DataIdentification/gmd:citation/gmd:CI_Citation/gmd:title/gco:CharacterString'),
         'description':       ('textList', '/gmd:MD_Metadata/gmd:identificationInfo/gmd:MD_DataIdentification/gmd:abstract/gco:CharacterString'),
-        'creator':           ('textList', 'string-join(/gmd:MD_Metadata/gmd:identificationInfo/gmd:MD_DataIdentification/gmd:citation/gmd:CI_Citation/gmd:citedResponsibleParty/gmd:CI_ResponsibleParty[gmd:role/gmd:CI_RoleCode[text()="author"]]/gmd:individualName/gco:CharacterString, ' (', /gmd:MD_Metadata/gmd:identificationInfo/gmd:MD_DataIdentification/gmd:citation/gmd:CI_Citation/gmd:citedResponsibleParty/gmd:CI_ResponsibleParty[gmd:role/gmd:CI_RoleCode[text()="author"]]/gmd:organisationName/gco:CharacterString, ') ', ';')'), 
-        'rights':            ('textList', '/gmd:MD_Metadata/gmd:identificationInfo/gmd:MD_DataIdentification/gmd:resourceConstraints/gmd:MD_Constraints/gmd:useLimitation/gco:CharacterString
-'), 
+        #'creator':           ('textList', 'string-join(/gmd:MD_Metadata/gmd:identificationInfo/gmd:MD_DataIdentification/gmd:citation/gmd:CI_Citation/gmd:citedResponsibleParty/gmd:CI_ResponsibleParty[gmd:role/gmd:CI_RoleCode[text()="author"]]/gmd:individualName/gco:CharacterString, " (", /gmd:MD_Metadata/gmd:identificationInfo/gmd:MD_DataIdentification/gmd:citation/gmd:CI_Citation/gmd:citedResponsibleParty/gmd:CI_ResponsibleParty[gmd:role/gmd:CI_RoleCode[text()="author"]]/gmd:organisationName/gco:CharacterString, ") ", ";")'), 
+        'rights':            ('textList', '/gmd:MD_Metadata/gmd:identificationInfo/gmd:MD_DataIdentification/gmd:resourceConstraints/gmd:MD_Constraints/gmd:useLimitation/gco:CharacterString'), 
         'groups':            ('textList', '/gmd:MD_Metadata/gmd:identificationInfo/gmd:MD_DataIdentification/gmd:descriptiveKeywords/gmd:MD_Keywords/gmd:keyword/gco:CharacterString[text()="rock and melt physical properties" OR text()="analogue models of geologic processes" OR text()="paleomagnetic and magnetic data" OR text()="Geochemical data (elemental and isotope geochemistry)" ]'),
-        'tags':              ('textList', 'tokenize(/gmd:MD_Metadata/gmd:identificationInfo/gmd:MD_DataIdentification/gmd:descriptiveKeywords/gmd:MD_Keywords/gmd:keyword/gco:CharacterString[text() <>"rock and melt physical properties" AND text() <> "analogue models of geologic processes"] AND text()="paleomagnetic and magnetic data" AND text()="Geochemical data (elemental and isotope geochemistry)", " > ")'),
+        #'tags':              ('textList', 'tokenize(/gmd:MD_Metadata/gmd:identificationInfo/gmd:MD_DataIdentification/gmd:descriptiveKeywords/gmd:MD_Keywords/gmd:keyword/gco:CharacterString[text() <>"rock and melt physical properties" AND text() <> "analogue models of geologic processes"] AND text()="paleomagnetic and magnetic data" AND text()="Geochemical data (elemental and isotope geochemistry)", " > ")'),
         'doi':               ('textList', '/gmd:MD_Metadata/gmd:identificationInfo/gmd:MD_DataIdentification/gmd:citation/gmd:CI_Citation/gmd:identifier/gmd:MD_Identifier/gmd:code/gco:CharacterString'),
         'created':           ('textList', '/gmd:MD_Metadata/gmd:identificationInfo/gmd:MD_DataIdentification/gmd:citation/gmd:CI_Citation/gmd:date/gmd:CI_Date[gmd:dateType/gmd:CI_DateTypeCode[text()="creation"]]/gmd:date/gco:Date'),
         'publicationYear':   ('textList', '/gmd:MD_Metadata/gmd:identificationInfo/gmd:MD_DataIdentification/gmd:citation/gmd:CI_Citation/gmd:date/gmd:CI_Date/gmd:date/gco:Date'),
-        'supplementTo':      ('textList', 'string-join('https://doi.org/', /gmd:MD_Metadata/gmd:identificationInfo/gmd:MD_DataIdentification/gmd:aggregationInfo/gmd:MD_AggregateInformation[gmd:associationType/gmd:DS_AssociationTypeCode[text()="IsSupplementTo"]]/gmd:aggregateDataSetIdentifier/gmd:RS_Identifier[codeSpace/gco:CharacterString[text()="DOI"]]/gmd:code/gco:CharacterString)'),
-        'cites':             ('textList', 'string-join('https://doi.org/', /gmd:MD_Metadata/gmd:identificationInfo/gmd:MD_DataIdentification/gmd:aggregationInfo/gmd:MD_AggregateInformation[gmd:associationType/gmd:DS_AssociationTypeCode[text()="Cites"]]/gmd:aggregateDataSetIdentifier/gmd:RS_Identifier[codeSpace/gco:CharacterString[text()="DOI"]]/gmd:code/gco:CharacterString)'),
-        'references':        ('textList', 'string-join('https://doi.org/', /gmd:MD_Metadata/gmd:identificationInfo/gmd:MD_DataIdentification/gmd:aggregationInfo/gmd:MD_AggregateInformation[gmd:associationType/gmd:DS_AssociationTypeCode[text()="References"]]/gmd:aggregateDataSetIdentifier/gmd:RS_Identifier[codeSpace/gco:CharacterString[text()="DOI"]]/gmd:code/gco:CharacterString)'),
+        #'supplementTo':      ('textList', 'string-join("https://doi.org/", /gmd:MD_Metadata/gmd:identificationInfo/gmd:MD_DataIdentification/gmd:aggregationInfo/gmd:MD_AggregateInformation[gmd:associationType/gmd:DS_AssociationTypeCode[text()="IsSupplementTo"]]/gmd:aggregateDataSetIdentifier/gmd:RS_Identifier[codeSpace/gco:CharacterString[text()="DOI"]]/gmd:code/gco:CharacterString)'),
+        #'cites':             ('textList', 'string-join("https://doi.org/", /gmd:MD_Metadata/gmd:identificationInfo/gmd:MD_DataIdentification/gmd:aggregationInfo/gmd:MD_AggregateInformation[gmd:associationType/gmd:DS_AssociationTypeCode[text()="Cites"]]/gmd:aggregateDataSetIdentifier/gmd:RS_Identifier[codeSpace/gco:CharacterString[text()="DOI"]]/gmd:code/gco:CharacterString)'),
+        #'references':        ('textList', 'string-join("https://doi.org/", /gmd:MD_Metadata/gmd:identificationInfo/gmd:MD_DataIdentification/gmd:aggregationInfo/gmd:MD_AggregateInformation[gmd:associationType/gmd:DS_AssociationTypeCode[text()="References"]]/gmd:aggregateDataSetIdentifier/gmd:RS_Identifier[codeSpace/gco:CharacterString[text()="DOI"]]/gmd:code/gco:CharacterString)'),
         'westBoundLongitude':('textList', '/gmd:MD_Metadata/gmd:identificationInfo/gmd:MD_DataIdentification/gmd:extent/gmd:EX_Extent/gmd:geographicElement/gmd:EX_GeographicBoundingBox/gmd:westBoundLongitude/gco:Decimal'),
         'eastBoundLongitude':('textList', '/gmd:MD_Metadata/gmd:identificationInfo/gmd:MD_DataIdentification/gmd:extent/gmd:EX_Extent/gmd:geographicElement/gmd:EX_GeographicBoundingBox/gmd:eastBoundLongitude/gco:Decimal'),
         'southBoundLatitude':('textList', '/gmd:MD_Metadata/gmd:identificationInfo/gmd:MD_DataIdentification/gmd:extent/gmd:EX_Extent/gmd:geographicElement/gmd:EX_GeographicBoundingBox/gmd:southBoundLatitude/gco:Decimal'),
         'northBoundLatitude':('textList', '/gmd:MD_Metadata/gmd:identificationInfo/gmd:MD_DataIdentification/gmd:extent/gmd:EX_Extent/gmd:geographicElement/gmd:EX_GeographicBoundingBox/gmd:northBoundLatitude/gco:Decimal'),
-        'contact':           ('textList', 'string-join(/gmd:MD_Metadata/gmd:identificationInfo/gmd:MD_DataIdentification/gmd:pointOfContact/gmd:CI_ResponsibleParty[gmd:role/gmd:CI_RoleCode[text()="pointOfContact"]]/gmd:individualName/gco:CharacterString, ' (', /gmd:MD_Metadata/gmd:identificationInfo/gmd:MD_DataIdentification/gmd:pointOfContact/gmd:CI_ResponsibleParty[gmd:role/gmd:CI_RoleCode[text()="pointOfContact"]]/gmd:organisationName/gco:CharacterString, ') ', /gmd:MD_Metadata/gmd:identificationInfo/gmd:MD_DataIdentification/gmd:pointOfContact/gmd:CI_ResponsibleParty[gmd:role/gmd:CI_RoleCode[text()="pointOfContact"]]/gmd:contactInfo/gmd:CI_Contact/gmd:address/gmd:CI_Address/gmd:electronicMailAddress/gco:CharacterString)'),
+        #'contact':           ('textList', 'string-join(/gmd:MD_Metadata/gmd:identificationInfo/gmd:MD_DataIdentification/gmd:pointOfContact/gmd:CI_ResponsibleParty[gmd:role/gmd:CI_RoleCode[text()="pointOfContact"]]/gmd:individualName/gco:CharacterString, " (", /gmd:MD_Metadata/gmd:identificationInfo/gmd:MD_DataIdentification/gmd:pointOfContact/gmd:CI_ResponsibleParty[gmd:role/gmd:CI_RoleCode[text()="pointOfContact"]]/gmd:organisationName/gco:CharacterString, ") ", /gmd:MD_Metadata/gmd:identificationInfo/gmd:MD_DataIdentification/gmd:pointOfContact/gmd:CI_ResponsibleParty[gmd:role/gmd:CI_RoleCode[text()="pointOfContact"]]/gmd:contactInfo/gmd:CI_Contact/gmd:address/gmd:CI_Address/gmd:electronicMailAddress/gco:CharacterString)'),
         'contactAffiliation':('textList', ''),
         'contactEmail':      ('textList', ''),
         'publisher':         ('textList', '/gmd:MD_Metadata/gmd:contact/gmd:CI_ResponsibleParty/gmd:contactInfo/gmd:CI_Contact/gmd:onlineResource/gmd:CI_OnlineResource/gmd:linkage/gmd:URL'),
@@ -154,12 +207,11 @@ datacite_reader4 = MetadataReader(
 )
 
 
-iso13139_reader = MetadataRead(
-    fields =  iso13139_fields,
+iso19139_reader = MetadataReader(
+    fields =  iso19139_fields,
     namespaces={
-	'gmd': '', 
-	'gco': '',
-        'default': 'http://datacite.org/schema/kernel-4', # ??? which namespace????
+	'gmd': 'http://www.isotc211.org/2005/gmd', 
+	'gco': 'http://www.isotc211.org/2005/gco'
     }
 )
 

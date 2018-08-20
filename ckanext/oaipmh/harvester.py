@@ -331,7 +331,7 @@ class OaipmhHarvester(HarvesterBase):
 
             content = json.loads(harvest_object.content)
 
-	    log.debug(content)
+	    # log.debug(content)
 
             self.package_dict['id'] = munge_title_to_name(harvest_object.guid)
             self.package_dict['name'] = self.package_dict['id']
@@ -343,8 +343,9 @@ class OaipmhHarvester(HarvesterBase):
                     self._handle_dataciteEPOS(content, context)
                 elif self.md_application == 'ILAB':
                     self._handle_dataciteILAB(content, context)
-            elif self.md_format == 'iso':
-                self._handle_iso(content, context)
+            elif self.md_format == 'iso19139':
+		log.debug('we are at iso')
+                self._handle_dataciteEPOS(content, context)
             elif (self.md_format == 'dif'
                or self.md_format == 'oai_dc'
                or self.md_format == 'oai_ddi'):
@@ -377,8 +378,8 @@ class OaipmhHarvester(HarvesterBase):
             (added/updated) where this was not valid. By simply checking
             the presence of 'title' should solve this.
             '''
-            log.debug('Create/update package using dict: %s'
-                      % self.package_dict)
+            #log.debug('Create/update package using dict: %s'
+            #          % self.package_dict)
             if 'title' in self.package_dict and self.package_dict['title']:
                 self._create_or_update_package(
                     self.package_dict,
@@ -482,7 +483,76 @@ class OaipmhHarvester(HarvesterBase):
 
     # handle data where metadata prefix = datacite for EPOS application
     def _handle_dataciteEPOS(self, content, context):
-        # AUTHOR
+        
+	log.debug('dataciteEPOS:: ')
+	# OK log.debug('TITLE: ')
+	#log.debug('; '.join(content['title']) )
+
+        # OK log.debug('DESCRIPTION: ')
+        #log.debug('; '.join(content['description']) )
+        
+	log.debug('CREATOR: ')
+        log.debug(''.join(content['creator']) )
+        
+	#log.debug('RIGHTS: ')
+        #log.debug('; '.join(content['rights']) )
+
+        log.debug('GROUPS: ')
+        log.debug('; '.join(content['groups']) )
+
+	# Voorwaarden dienen uitgebreid te worden
+        log.debug('TAGS: ')
+        log.debug(content['tags'])
+
+        # OK log.debug('DOI: ')
+        #log.debug('; '.join(content['doi']) )
+        #OK log.debug('CREATED: ')
+        #log.debug('; '.join(content['created']) )
+        #OK log.debug('PUBL. Year: ')
+        #log.debug('; '.join(content['publicationYear']) )
+        
+	log.debug('SUPPL To: ')
+        log.debug('; '.join(content['supplementTo']) )
+#'supplementTo'
+        log.debug('CITES: ')
+        log.debug('; '.join(content['cites']) )
+#'cites'
+        log.debug('REFERENCES: ')
+        log.debug('; '.join(content['references']) )
+#'references'
+
+	# lat/lon OK
+        #log.debug('westBoundLongitude: ')
+        #log.debug('; '.join(content['westBoundLongitude']) )
+        #log.debug('eastBoundLongitude: ')
+        #log.debug('; '.join(content['eastBoundLongitude']) )
+        #log.debug('southBoundLatitude: ')
+        #log.debug('; '.join(content['southBoundLatitude']) )
+        #log.debug('northBoundLatitude: ')
+        #log.debug('; '.join(content['northBoundLatitude']) )
+        
+	log.debug('CONTACT: ')
+        log.debug(''.join(content['contact']) )
+#'contact'         
+        log.debug('CONTACTAffiliation: ') ## ???? NODIG ????
+        log.debug('; '.join(content['contactAffiliation']) )
+        
+	log.debug('CONTACTEmail: ') ## ????? nodig???
+        log.debug('; '.join(content['contactEmail']) )
+        
+	# OK log.debug('PUBLISHER: ')
+        # log.debug('; '.join(content['publisher']) )
+        
+	# log.debug('ORGANIZATIONS: ')
+        # log.debug('; '.join(content['organizations']) )
+        
+	log.debug('orgAFFILATIONS: ')
+        log.debug('; '.join(content['orgAffiliations']) )
+
+
+
+# ------------------------------------------------------------------------------------------------------------------
+	# AUTHOR
         self.package_dict['author'] = '; '.join(content['creator'])
 
 	self.package_dict['author_email'] = 'info@blabla.com'
@@ -495,8 +565,6 @@ class OaipmhHarvester(HarvesterBase):
             organizations = content['orgAffiliations']
         elif content['organizations']:
             organizations = content['organizations']
-
-	# organizations.append(u'INGV, Italy')
 
 	organizations.append('Other lab') #'other-lab') # default value
 
