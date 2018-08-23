@@ -17,7 +17,6 @@ from oaipmh.metadata import MetadataRegistry
 from metadata import oai_ddi_reader
 from metadata import oai_dc_reader
 from metadata import dif_reader, dif_reader2
-from metadata import datacite_reader3, datacite_reader4
 from metadata import datacite_ilab
 from metadata import iso19139_reader
 from pprint import pprint
@@ -140,21 +139,12 @@ class OaipmhHarvester(HarvesterBase):
     def _create_metadata_registry(self):
         registry = MetadataRegistry()
 
-        if self.md_format == 'iso19139':
+        if self.md_format == 'iso19139' and self.md_application == 'EPOS':
 	    registry.registerReader(self.md_format, iso19139_reader)
             log.debug('Format -> iso19139')
-	elif self.md_format == 'datacite':
-            if self.md_application == 'EPOS':
-                if self.additional_info == 'kernel3':
-                    registry.registerReader(self.md_format, datacite_reader3)
-                    log.debug('->datacite_reader3')
-                else:
-                    registry.registerReader(self.md_format, datacite_reader4)
-                    log.debug('->datacite_reader4')
-                    log.debug(registry)
-	    elif self.md_application == 'ILAB':
-                registry.registerReader(self.md_format, datacite_ilab)
-                log.debug('->datacite ILAB reader')
+	elif self.md_format == 'datacite' and self.md_application == 'ILAB':
+            registry.registerReader(self.md_format, datacite_ilab)
+            log.debug('->datacite ILAB reader')
         else:
             registry.registerReader('oai_dc', oai_dc_reader)
             registry.registerReader('oai_ddi', oai_ddi_reader)
@@ -338,14 +328,11 @@ class OaipmhHarvester(HarvesterBase):
 
             # Differentiate further package creation
             # dependent on metadataPrefix.
-            if self.md_format == 'datacite':
-                if self.md_application == 'EPOS': # default
-                    self._handle_dataciteEPOS(content, context)
-                elif self.md_application == 'ILAB':
-                    self._handle_dataciteILAB(content, context)
-            elif self.md_format == 'iso19139':
+            if self.md_format == 'datacite' and self.md_application == 'ILAB':
+               self._handle_dataciteILAB(content, context)
+            elif self.md_format == 'iso19139' and self.md_application == 'EPOS':
 		log.debug('we are at iso')
-                self._handle_dataciteEPOS(content, context)
+		self._handle_ISO19139EPOS(content, context)
             elif (self.md_format == 'dif'
                or self.md_format == 'oai_dc'
                or self.md_format == 'oai_ddi'):
@@ -476,94 +463,25 @@ class OaipmhHarvester(HarvesterBase):
         if content['collectionPeriod']:
             extras.append(('Collection period', content['collectionPeriod'][0]))
 
- 
-
         self.package_dict['extras'] = extras
 
-
-    # handle data where metadata prefix = datacite for EPOS application
-    def _handle_dataciteEPOS(self, content, context):
-        
-	log.debug('dataciteEPOS:: ')
-	# OK log.debug('TITLE: ')
-	#log.debug('; '.join(content['title']) )
-
-        # OK log.debug('DESCRIPTION: ')
-        #log.debug('; '.join(content['description']) )
-        
-	log.debug('CREATOR: ')
-        log.debug(''.join(content['creator']) )
-        
-	#log.debug('RIGHTS: ')
-        #log.debug('; '.join(content['rights']) )
-
-        log.debug('GROUPS: ')
-        log.debug('; '.join(content['groups']) )
-
-	# Voorwaarden dienen uitgebreid te worden
-        log.debug('TAGS: ')
-        log.debug(content['tags'])
-
-        # OK log.debug('DOI: ')
-        #log.debug('; '.join(content['doi']) )
-        #OK log.debug('CREATED: ')
-        #log.debug('; '.join(content['created']) )
-        #OK log.debug('PUBL. Year: ')
-        #log.debug('; '.join(content['publicationYear']) )
-        
-	log.debug('SUPPL To: ')
-        log.debug('; '.join(content['supplementTo']) )
-#'supplementTo'
-        log.debug('CITES: ')
-        log.debug('; '.join(content['cites']) )
-#'cites'
-        log.debug('REFERENCES: ')
-        log.debug('; '.join(content['references']) )
-#'references'
-
-	# lat/lon OK
-        #log.debug('westBoundLongitude: ')
-        #log.debug('; '.join(content['westBoundLongitude']) )
-        #log.debug('eastBoundLongitude: ')
-        #log.debug('; '.join(content['eastBoundLongitude']) )
-        #log.debug('southBoundLatitude: ')
-        #log.debug('; '.join(content['southBoundLatitude']) )
-        #log.debug('northBoundLatitude: ')
-        #log.debug('; '.join(content['northBoundLatitude']) )
-        
-	log.debug('CONTACT: ')
-        log.debug(''.join(content['contact']) )
-#'contact'         
-        log.debug('CONTACTAffiliation: ') ## ???? NODIG ????
-        log.debug('; '.join(content['contactAffiliation']) )
-        
-	log.debug('CONTACTEmail: ') ## ????? nodig???
-        log.debug('; '.join(content['contactEmail']) )
-        
-	# OK log.debug('PUBLISHER: ')
-        # log.debug('; '.join(content['publisher']) )
-        
-	# log.debug('ORGANIZATIONS: ')
-        # log.debug('; '.join(content['organizations']) )
-        
-	log.debug('orgAFFILATIONS: ')
-        log.debug('; '.join(content['orgAffiliations']) )
-
-
-
-# ------------------------------------------------------------------------------------------------------------------
+    # handle data where metadata prefix = is19139 for EPOS application
+    def _handle_ISO19139EPOS(self, content, context):
 	# AUTHOR
-        self.package_dict['author'] = '; '.join(content['creator'])
+	self.package_dict['title'] = ' '.join(content['title'])
 
-	self.package_dict['author_email'] = 'info@blabla.com'
+        self.package_dict[ 'notes'] = ' '.join(content['description'])
+        self.package_dict['license_id'] =  content['rights'][0]
+
+
+        self.package_dict['author'] = ''.join(content['creator'])
+
+	# obsolete - self.package_dict['author_email'] = 'info@blabla.com'
 
         # ORGANIZATION (LABS in EPOS)
         # Prepare organizations list with default value as last possibility
 	organizations = []
-
-        if content['orgAffiliations']:
-            organizations = content['orgAffiliations']
-        elif content['organizations']:
+        if content['organizations']:
             organizations = content['organizations']
 
 	organizations.append('Other lab') #'other-lab') # default value
@@ -594,8 +512,20 @@ class OaipmhHarvester(HarvesterBase):
             )
         self.package_dict['groups'] = groups
 
-        # TAGS-Datacite
-        self.package_dict['tags'] = content['tags']
+        # TAGS - Hierarchical 'A > B > C > D' to be transformed to separated A, B, C, D
+        tags = []
+        for tag in content['tags']:
+            tokens = tag.split('>')
+            tags.append(tokens.pop())
+
+	# remove unwanted characters
+        tags = [s.replace('(', '') for s in tags]
+        tags = [s.replace(')', '') for s in tags]
+        tags = [s.replace('/', ' ') for s in tags]
+        tags = [s.replace(u'\u2019', ' ') for s in tags]
+        tags = [s.replace(u'\u2018', ' ') for s in tags]
+
+	self.package_dict['tags'] = tags
 
 	# MAINTAINER info - datacite for EPOS - hardcoded
 	self.package_dict['maintainer']	= 'GFZ Potzdam'
@@ -607,13 +537,13 @@ class OaipmhHarvester(HarvesterBase):
 
         if content['contact']:
             extras.append(('Dataset contact',
-			content['contact'][0] + ' - ' + content['contactAffiliation'][0]))
+			content['contact'][0] ))
 
         if content['created']:
             extras.append(('Created at repository',
                            content['created'][0]))
         if content['publicationYear']:
-            extras.append(('Year of publication',
+            extras.append(('Publication date',
                            content['publicationYear'][0]))
         
 	# Fetch extra external information regarding supplement on DOI
@@ -733,9 +663,9 @@ class OaipmhHarvester(HarvesterBase):
                 'notes': 'description',
                 'license_id': 'rights'
             }
-        elif self.md_format == 'iso':
+        elif self.md_format == 'iso19139':
             return {
-                'title': 'title'
+                #'title': 'title'
             }
 
         elif self.md_format == 'dif':
