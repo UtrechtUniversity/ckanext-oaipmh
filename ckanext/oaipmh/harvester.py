@@ -504,7 +504,6 @@ class OaipmhHarvester(HarvesterBase):
         # TAGS - Hierarchical 'A > B > C > D' to be transformed to separated A, B, C, D
         tags = []
         for tag in content['tags']:
-            #tokens = tag.split('>')
 	    tags.extend(tag.split('>'))
 
         # remove unwanted characters
