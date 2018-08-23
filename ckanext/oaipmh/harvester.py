@@ -79,7 +79,7 @@ class OaipmhHarvester(HarvesterBase):
                 force_http_get=self.force_http_get
             )
 
-	    log.debug('URL: ' + harvest_job.source.url)	
+            log.debug('URL: ' + harvest_job.source.url)
 
             client.identify()  # check if identify works
             for header in self._identifier_generator(client):
@@ -140,9 +140,9 @@ class OaipmhHarvester(HarvesterBase):
         registry = MetadataRegistry()
 
         if self.md_format == 'iso19139' and self.md_application == 'EPOS':
-	    registry.registerReader(self.md_format, iso19139_reader)
+            registry.registerReader(self.md_format, iso19139_reader)
             log.debug('Format -> iso19139')
-	elif self.md_format == 'datacite' and self.md_application == 'ILAB':
+        elif self.md_format == 'datacite' and self.md_application == 'ILAB':
             registry.registerReader(self.md_format, datacite_ilab)
             log.debug('->datacite ILAB reader')
         else:
@@ -171,10 +171,10 @@ class OaipmhHarvester(HarvesterBase):
             self.set_spec = config_json.get('set', None)
             self.md_format = config_json.get('metadata_prefix', 'datacite')
             # Differentiation for the metadata handling methods.
-	    # In essence now there are only two tastes: ILAB and EPOS (which is default).
-            self.md_application =  config_json.get('application', 'EPOS')
+            # In essence now there are only two tastes: ILAB and EPOS (which is default).
+            self.md_application = config_json.get('application', 'EPOS')
 
-            # Additional info adds possibities to differentiate - this is in essence only for EPOS 
+            # Additional info adds possibities to differentiate - this is in essence only for EPOS
             # within a metadata_prefix.
             # Maybe call this variable namespace_info.
             self.additional_info = config_json.get('additional_info',
@@ -209,8 +209,8 @@ class OaipmhHarvester(HarvesterBase):
 
 
             log.debug('Application: ' + self.md_application)
-	    log.debug('Md_format: ' + self.md_format)
-	    log.debug('AddInfo: ' + self.additional_info)
+            log.debug('Md_format: ' + self.md_format)
+            log.debug('AddInfo: ' + self.additional_info)
 
             registry = self._create_metadata_registry()
             client = oaipmh.client.Client(
@@ -298,7 +298,7 @@ class OaipmhHarvester(HarvesterBase):
         :returns: True if everything went right, False if errors were found
         '''
 
-        #  log.debug("in import stage: %s" % harvest_object.guid)
+        # log.debug("in import stage: %s" % harvest_object.guid)
         if not harvest_object:
             log.error('No harvest object received')
             self._save_object_error('No harvest object received')
@@ -307,21 +307,17 @@ class OaipmhHarvester(HarvesterBase):
         try:
             self._set_config(harvest_object.job.source.config)
 
-	    log.debug("import - stage: url = " + harvest_object.job.source.url)
-
-	    context = {
+            context = {
                 'model': model,
                 'session': Session,
                 'user': self.user,
                 'ignore_auth': True  # TODO: Remove, just to test
             }
 
-            # main dictonary holding all package data
+            # Main dictonary holding all package data.
             self.package_dict = {}
 
             content = json.loads(harvest_object.content)
-
-	    # log.debug(content)
 
             self.package_dict['id'] = munge_title_to_name(harvest_object.guid)
             self.package_dict['name'] = self.package_dict['id']
@@ -329,13 +325,12 @@ class OaipmhHarvester(HarvesterBase):
             # Differentiate further package creation
             # dependent on metadataPrefix.
             if self.md_format == 'datacite' and self.md_application == 'ILAB':
-               self._handle_dataciteILAB(content, context)
+                self._handle_dataciteILAB(content, context)
             elif self.md_format == 'iso19139' and self.md_application == 'EPOS':
-		log.debug('we are at iso')
-		self._handle_ISO19139EPOS(content, context)
-            elif (self.md_format == 'dif'
-               or self.md_format == 'oai_dc'
-               or self.md_format == 'oai_ddi'):
+                self._handle_ISO19139EPOS(content, context)
+            elif (self.md_format == 'dif' or
+                  self.md_format == 'oai_dc' or
+                  self.md_format == 'oai_ddi'):
                 self._handle_nonEpos(content, context,harvest_object)
 
             # Add fields according to mapping
@@ -343,8 +338,8 @@ class OaipmhHarvester(HarvesterBase):
 
             for ckan_field, oai_field in mapping.iteritems():
                 try:
-                    if (ckan_field == 'maintainer_email'
-                    and '@' not in content[oai_field][0]):
+                    if (ckan_field == 'maintainer_email' and
+                        '@' not in content[oai_field][0]):
                         # Email not available.
                         # Do not set email field as it will break validation.
                         continue
@@ -375,7 +370,7 @@ class OaipmhHarvester(HarvesterBase):
 
             Session.commit()
         except:
-            log.exception('Something went wrong 2!')
+            log.exception('Something went wrong!')
             self._save_object_error(
                 'Exception in import stage',
                 harvest_object
@@ -422,18 +417,16 @@ class OaipmhHarvester(HarvesterBase):
         self.package_dict['groups'] = groups
 
         # TAGS-Datacite
-	log.debug('Tags:')
+        log.debug('Tags:')
         log.debug(content['tags'])
-	x = content['tags']
-	x = [s.replace('(', '') for s in x]
-	x = [s.replace(')', '') for s in x]
+        x = content['tags']
+        x = [s.replace('(', '') for s in x]
+        x = [s.replace(')', '') for s in x]
 
-	self.package_dict['tags'] = x
+        self.package_dict['tags'] = x
 
         # LICENSE
         self.package_dict['license_id'] = content['rights'][0]
-
-
 
         # MAINTAINER info - datacite for ILAB - harcoded
         self.package_dict['maintainer'] = 'Utrecht University'
@@ -444,22 +437,23 @@ class OaipmhHarvester(HarvesterBase):
 
         if content['geolocationPlaces']:
             extras.append(('Locations covered',
-                        ', '.join(content['geolocationPlaces'])))
+                          ', '.join(content['geolocationPlaces'])))
 
         if content['contact']:
             extras.append(('Dataset contact',
-                        content['contact'][0] + '-' + content['contactAffiliation'][0]))
+                          content['contact'][0] + '-' + content['contactAffiliation'][0]))
 
         if content['created']:
             extras.append(('Created at repository',
                            content['created'][0]))
+
         if content['publicationYear']:
             extras.append(('Year of publication',
                            content['publicationYear'][0]))
 
         if content['publisher']:
             extras.append(('Publisher', content['publisher'][0]))
-        
+
         if content['collectionPeriod']:
             extras.append(('Collection period', content['collectionPeriod'][0]))
 
@@ -467,30 +461,25 @@ class OaipmhHarvester(HarvesterBase):
 
     # handle data where metadata prefix = is19139 for EPOS application
     def _handle_ISO19139EPOS(self, content, context):
-	# AUTHOR
-	self.package_dict['title'] = ' '.join(content['title'])
-
-        self.package_dict[ 'notes'] = ' '.join(content['description'])
-        self.package_dict['license_id'] =  content['rights'][0]
-
-
+        # AUTHOR
+        self.package_dict['title'] = ' '.join(content['title'])
+        self.package_dict['notes'] = ' '.join(content['description'])
+        self.package_dict['license_id'] = content['rights'][0]
         self.package_dict['author'] = ''.join(content['creator'])
-
-	# obsolete - self.package_dict['author_email'] = 'info@blabla.com'
 
         # ORGANIZATION (LABS in EPOS)
         # Prepare organizations list with default value as last possibility
-	organizations = []
+        organizations = []
         if content['organizations']:
             organizations = content['organizations']
 
-	organizations.append('Other lab') #'other-lab') # default value
+        organizations.append('Other lab')  # 'other-lab' default value
 
         org_id = self._find_first_entity('organization',
-                                              organizations, context)
+                                         organizations, context)
         log.debug('found org:' + org_id)
-	
-	self.package_dict['owner_org'] = org_id
+
+        self.package_dict['owner_org'] = org_id
 
         # HDR -> voor datacite niet juist geimplmenteerd
         self.package_dict['formats'] = 'datacite'
@@ -518,59 +507,55 @@ class OaipmhHarvester(HarvesterBase):
             #tokens = tag.split('>')
 	    tags.extend(tag.split('>'))
 
-	# remove unwanted characters
+        # remove unwanted characters
         tags = [s.replace('(', '') for s in tags]
         tags = [s.replace(')', '') for s in tags]
         tags = [s.replace('/', ' ') for s in tags]
         tags = [s.replace(u'\u2019', ' ') for s in tags]
         tags = [s.replace(u'\u2018', ' ') for s in tags]
 
-	self.package_dict['tags'] = tags
+        self.package_dict['tags'] = tags
 
-	# MAINTAINER info - datacite for EPOS - hardcoded
-	self.package_dict['maintainer']	= 'GFZ Potzdam'
-	self.package_dict['maintainer_email'] = 'info@gfz.de'
+        # MAINTAINER info - datacite for EPOS - hardcoded
+        self.package_dict['maintainer'] = 'GFZ Potzdam'
+        self.package_dict['maintainer_email'] = 'info@gfz.de'
 
- 
-	# EXTRAS - for datacite for EPOS -> KEYWORDS -> i.e. customization
+
+        # EXTRAS - for datacite for EPOS -> KEYWORDS -> i.e. customization
         extras = []
 
         if content['contact']:
-            extras.append(('Dataset contact',
-			content['contact'][0] ))
-
+            extras.append(('Dataset contact', content['contact'][0] ))
         if content['created']:
-            extras.append(('Created at repository',
-                           content['created'][0]))
+            extras.append(('Created at repository', content['created'][0]))
         if content['publicationYear']:
-            extras.append(('Publication date',
-                           content['publicationYear'][0]))
-        
-	# Fetch extra external information regarding supplement on DOI
-	urlDoiBaseGFZ = 'http://dataservices.gfz-potsdam.de/getcitationinfo.php?doi=http://dx.doi.org/'
+            extras.append(('Publication date', content['publicationYear'][0]))
 
-	citationTypes = ['supplementTo', 'cites', 'references']
-	
-	# cites holds all externally collected info per citationType
-	cites = {
-		'supplementTo':'',
-		'cites': '',
-		'references': ''
-	}
+        # Fetch extra external information regarding supplement on DOI
+        urlDoiBaseGFZ = 'http://dataservices.gfz-potsdam.de/getcitationinfo.php?doi=http://dx.doi.org/'
 
-	for citationType in citationTypes:
-	    count = 0
-	    for doi in content[citationType]:
-	        count += 1
-		r = requests.get(urlDoiBaseGFZ + doi)
-		citeData = json.loads(r.text)
-		#log.debug(citeData['citation'])
-		prefix = ''	
-		if count > 1:
-		    prefix= ' -------- '
-	        cites[citationType] += prefix + str(count) + ') ' + citeData['citation'] 
-	
-	if cites['supplementTo']:
+        citationTypes = ['supplementTo', 'cites', 'references']
+
+        # cites holds all externally collected info per citationType
+        cites = {
+                'supplementTo':'',
+                'cites': '',
+                'references': ''
+        }
+
+        for citationType in citationTypes:
+            count = 0
+            for doi in content[citationType]:
+                count += 1
+                r = requests.get(urlDoiBaseGFZ + doi)
+                citeData = json.loads(r.text)
+                #log.debug(citeData['citation'])
+                prefix = ''
+                if count > 1:
+                    prefix= ' -------- '
+                cites[citationType] += prefix + str(count) + ') ' + citeData['citation']
+
+        if cites['supplementTo']:
             extras.append(('Is supplement to',
                            cites['supplementTo']))
         if cites['cites']:
@@ -579,8 +564,8 @@ class OaipmhHarvester(HarvesterBase):
         if cites['references']:
             extras.append(('References',
                             cites['references']))
-        
-	if content['westBoundLongitude']:
+
+        if content['westBoundLongitude']:
             extras.append(('geobox-wLong',
                            content['westBoundLongitude'][0]))
         if content['eastBoundLongitude']:
@@ -833,37 +818,36 @@ class OaipmhHarvester(HarvesterBase):
             )
         return []
 
-
     # For EPOS - do not create new entities but fall back to default if not found .
     # in EPOS case used for Labs (i.e. groups)
     def _find_first_entity(self, entityType, entityNames, context):
-	log.debug(entityType + ' names: %s' % entityNames)
+        log.debug(entityType + ' names: %s' % entityNames)
 
         entityId = '-1'   # Not found - should not be possible
         for entity_name in entityNames:
- 	    #log.debug('labname: ' + entity_name)
+            #log.debug('labname: ' + entity_name)
             #log.debug( self._utf8_and_remove_diacritics(entity_name) )
-	    #log.debug( munge_title_to_name(entity_name) )
-	    data_dict = {
+            #log.debug( munge_title_to_name(entity_name) )
+            data_dict = {
                 'id': munge_title_to_name(entity_name),
             }
-	    log.debug(data_dict)
+            log.debug(data_dict)
             try:
-		entity = get_action(entityType + '_show')(context.copy(), data_dict)
+                entity = get_action(entityType + '_show')(context.copy(), data_dict)
                 log.info('Try: found the ' + entityType + ' with id' + entity['id'])
-		entityId = entity['id']
+                entityId = entity['id']
                 break
             except Exception as e:
-	    	#log.info('Exception: ' + entity_name)
-		#log.info(str(e))
-	        continue
+                #log.info('Exception: ' + entity_name)
+                #log.info(str(e))
+                continue
 
-	return entityId
+        return entityId
 
 
     # generic function for finding/creation of multiple entities (groups/organizations)
     def _find_or_create_entity(self, entityType, entityNames, context):
-	log.debug(entityType + ' names: %s' % entityNames)
+        log.debug(entityType + ' names: %s' % entityNames)
         entity_ids = []
         for entity_name in entityNames:
             data_dict = {

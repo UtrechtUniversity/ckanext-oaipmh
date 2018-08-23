@@ -12,10 +12,8 @@ if sys.version_info[0] == 3:
 else:
     text_type = unicode  # noqa
 
-
 class Error(Exception):
     pass
-
 
 class MetadataReader(object):
     """A default implementation of a reader based on fields.
@@ -62,7 +60,7 @@ datacite_ilabfields = {
          'tags':              ('textList', 'datacite:resource/datacite:subjects/datacite:subject[@subjectScheme="OECD FOS 2007"]/text()'),
          'doi':               ('textList', 'datacite:resource/datacite:identifier[@identifierType="DOI"]/text()'),
          'created':           ('textList', 'datacite:resource/datacite:dates/datacite:date[@dateType="Created"]/text()'),
-	 'collectionPeriod':  ('textList', 'datacite:resource/datacite:dates/datacite:date[@dateType="Collected"]/text()'),
+         'collectionPeriod':  ('textList', 'datacite:resource/datacite:dates/datacite:date[@dateType="Collected"]/text()'),
          'publicationYear':   ('textList', 'datacite:resource/datacite:publicationYear/text()'),
 #        'supplementTo':      ('textList', 'default:resource/default:relatedIdentifiers/default:relatedIdentifier[@relatedIdentifierType="DOI" and @relationType="IsSupplementTo"]/text()'),
 #        'cites':             ('textList', 'default:resource/default:relatedIdentifiers/default:relatedIdentifier[@relatedIdentifierType="DOI" and @relationType="Cites"]/text()'),
@@ -79,7 +77,6 @@ datacite_ilabfields = {
         'orgAffiliations':    ('textList', 'datacite:resource/datacite:contributors/datacite:contributor[@contributorType="HostingInstitution"]/datacite:affiliation/text()'),
         'geolocationPlaces':  ('textList', 'datacite:resource/datacite:geoLocations/datacite:geoLocation/datacite:geoLocationPlace/text()'),
     }
-
 
 datacite_fields = {
         'title':             ('textList', 'default:resource/default:titles/default:title/text()'),  # noqa
@@ -114,8 +111,8 @@ iso19139_fields = {
         'creator':           ('textList', 'concat(gmd:MD_Metadata/gmd:identificationInfo/gmd:MD_DataIdentification/gmd:citation/gmd:CI_Citation/gmd:citedResponsibleParty/gmd:CI_ResponsibleParty[gmd:role/gmd:CI_RoleCode[text()="author"]]/gmd:individualName/gco:CharacterString/text(), " (", gmd:MD_Metadata/gmd:identificationInfo/gmd:MD_DataIdentification/gmd:citation/gmd:CI_Citation/gmd:citedResponsibleParty/gmd:CI_ResponsibleParty[gmd:role/gmd:CI_RoleCode[text()="author"]]/gmd:organisationName/gco:CharacterString/text(), ") ")'),
 
         'rights':            ('textList', 'gmd:MD_Metadata/gmd:identificationInfo/gmd:MD_DataIdentification/gmd:resourceConstraints/gmd:MD_Constraints/gmd:useLimitation/gco:CharacterString/text()'),
-        'groups':	     ('textList', 'gmd:MD_Metadata/gmd:identificationInfo/gmd:MD_DataIdentification/gmd:descriptiveKeywords/gmd:MD_Keywords/gmd:keyword/gco:CharacterString[text()="rock and melt physical properties" or text()="analogue models of geologic processes" or text()="paleomagnetic and magnetic data" or text()="Geochemical data (elemental and isotope geochemistry)" ]/text()'),
-	'tags': 	     ('textList', 'gmd:MD_Metadata/gmd:identificationInfo/gmd:MD_DataIdentification/gmd:descriptiveKeywords/gmd:MD_Keywords/gmd:keyword/gco:CharacterString[not(text() ="rock and melt physical properties" or text()="analogue models of geologic processes" or text()="EPOS" or text()="paleomagnetic and magnetic data" or text()="Geochemical data (elemental and isotope geochemistry")]/text()'),	
+        'groups':            ('textList', 'gmd:MD_Metadata/gmd:identificationInfo/gmd:MD_DataIdentification/gmd:descriptiveKeywords/gmd:MD_Keywords/gmd:keyword/gco:CharacterString[text()="rock and melt physical properties" or text()="analogue models of geologic processes" or text()="paleomagnetic and magnetic data" or text()="Geochemical data (elemental and isotope geochemistry)" ]/text()'),
+        'tags':              ('textList', 'gmd:MD_Metadata/gmd:identificationInfo/gmd:MD_DataIdentification/gmd:descriptiveKeywords/gmd:MD_Keywords/gmd:keyword/gco:CharacterString[not(text() ="rock and melt physical properties" or text()="analogue models of geologic processes" or text()="EPOS" or text()="paleomagnetic and magnetic data" or text()="Geochemical data (elemental and isotope geochemistry")]/text()'), 
 
         'doi':               ('textList', 'gmd:MD_Metadata/gmd:identificationInfo/gmd:MD_DataIdentification/gmd:citation/gmd:CI_Citation/gmd:identifier/gmd:MD_Identifier/gmd:code/gco:CharacterString/text()'),
         'created':           ('textList', 'gmd:MD_Metadata/gmd:identificationInfo/gmd:MD_DataIdentification/gmd:citation/gmd:CI_Citation/gmd:date/gmd:CI_Date[gmd:dateType/gmd:CI_DateTypeCode[text()="creation"]]/gmd:date/gco:Date/text()'),
@@ -133,17 +130,16 @@ iso19139_fields = {
         'eastBoundLongitude':('textList', 'gmd:MD_Metadata/gmd:identificationInfo/gmd:MD_DataIdentification/gmd:extent/gmd:EX_Extent/gmd:geographicElement/gmd:EX_GeographicBoundingBox/gmd:eastBoundLongitude/gco:Decimal/text()'),
         'southBoundLatitude':('textList', 'gmd:MD_Metadata/gmd:identificationInfo/gmd:MD_DataIdentification/gmd:extent/gmd:EX_Extent/gmd:geographicElement/gmd:EX_GeographicBoundingBox/gmd:southBoundLatitude/gco:Decimal/text()'),
         'northBoundLatitude':('textList', 'gmd:MD_Metadata/gmd:identificationInfo/gmd:MD_DataIdentification/gmd:extent/gmd:EX_Extent/gmd:geographicElement/gmd:EX_GeographicBoundingBox/gmd:northBoundLatitude/gco:Decimal/text()'),
-	'contact':           ('textList', 'concat(gmd:MD_Metadata/gmd:identificationInfo/gmd:MD_DataIdentification/gmd:pointOfContact/gmd:CI_ResponsibleParty[gmd:role/gmd:CI_RoleCode[text()="pointOfContact"]]/gmd:individualName/gco:CharacterString/text(), " (", gmd:MD_Metadata/gmd:identificationInfo/gmd:MD_DataIdentification/gmd:pointOfContact/gmd:CI_ResponsibleParty[gmd:role/gmd:CI_RoleCode[text()="pointOfContact"]]/gmd:organisationName/gco:CharacterString/text(), ") ", gmd:MD_Metadata/gmd:identificationInfo/gmd:MD_DataIdentification/gmd:pointOfContact/gmd:CI_ResponsibleParty[gmd:role/gmd:CI_RoleCode[text()="pointOfContact"]]/gmd:contactInfo/gmd:CI_Contact/gmd:address/gmd:CI_Address/gmd:electronicMailAddress/gco:CharacterString/text())'),
+        'contact':           ('textList', 'concat(gmd:MD_Metadata/gmd:identificationInfo/gmd:MD_DataIdentification/gmd:pointOfContact/gmd:CI_ResponsibleParty[gmd:role/gmd:CI_RoleCode[text()="pointOfContact"]]/gmd:individualName/gco:CharacterString/text(), " (", gmd:MD_Metadata/gmd:identificationInfo/gmd:MD_DataIdentification/gmd:pointOfContact/gmd:CI_ResponsibleParty[gmd:role/gmd:CI_RoleCode[text()="pointOfContact"]]/gmd:organisationName/gco:CharacterString/text(), ") ", gmd:MD_Metadata/gmd:identificationInfo/gmd:MD_DataIdentification/gmd:pointOfContact/gmd:CI_ResponsibleParty[gmd:role/gmd:CI_RoleCode[text()="pointOfContact"]]/gmd:contactInfo/gmd:CI_Contact/gmd:address/gmd:CI_Address/gmd:electronicMailAddress/gco:CharacterString/text())'),
         'publisher':         ('textList', 'gmd:MD_Metadata/gmd:contact/gmd:CI_ResponsibleParty/gmd:contactInfo/gmd:CI_Contact/gmd:onlineResource/gmd:CI_OnlineResource/gmd:linkage/gmd:URL/text()'),
-	'organizations':     ('textList', 'gmd:MD_Metadata/gmd:identificationInfo/gmd:MD_DataIdentification/gmd:citation/gmd:CI_Citation/gmd:citedResponsibleParty/gmd:CI_ResponsibleParty[gmd:role/gmd:CI_RoleCode[text()="originator"]]/gmd:organisationName/gco:CharacterString/text()'), 
+        'organizations':     ('textList', 'gmd:MD_Metadata/gmd:identificationInfo/gmd:MD_DataIdentification/gmd:citation/gmd:CI_Citation/gmd:citedResponsibleParty/gmd:CI_ResponsibleParty[gmd:role/gmd:CI_RoleCode[text()="originator"]]/gmd:organisationName/gco:CharacterString/text()'), 
     }
-
 
 iso19139_reader = MetadataReader(
     fields =  iso19139_fields,
     namespaces={
-	'gmd': 'http://www.isotc211.org/2005/gmd', 
-	'gco': 'http://www.isotc211.org/2005/gco'
+        'gmd': 'http://www.isotc211.org/2005/gmd', 
+        'gco': 'http://www.isotc211.org/2005/gco'
     }
 )
 
@@ -153,8 +149,6 @@ datacite_ilab = MetadataReader(
         'datacite': 'http://datacite.org/schema/kernel-4',
     }
 )
-
-
 
 oai_ddi_reader = MetadataReader(
     fields={
@@ -205,7 +199,6 @@ oai_dc_reader = MetadataReader(
     'oai': 'http://www.openarchives.org/OAI/2.0/',
     'dc': 'http://purl.org/dc/elements/1.1/'}
 )
-
 
 xpath_prefix = "//*[name()='metadata']/*[name()='DIF']"
 # TODO: Can add what ever fields are needed
