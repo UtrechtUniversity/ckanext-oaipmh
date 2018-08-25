@@ -5,6 +5,7 @@ import logging
 from oaipmh import common
 from lxml import etree
 
+
 log = logging.getLogger(__name__)
 
 if sys.version_info[0] == 3:
@@ -26,13 +27,14 @@ class MetadataReader(object):
     def __call__(self, element):
         map = {}
         # create XPathEvaluator for this element
+
         xpath_evaluator = etree.XPathEvaluator(element,
                                                namespaces=self._namespaces)
 
         e = xpath_evaluator.evaluate
         # now extra field info according to xpath expr
         for field_name, (field_type, expr) in list(self._fields.items()):
-            if field_type == 'bytes':
+	    if field_type == 'bytes':
                 value = str(e(expr))
             elif field_type == 'bytesList':
                 value = [str(item) for item in e(expr)]
@@ -108,7 +110,9 @@ iso19139_fields = {
         'title':             ('textList', 'gmd:MD_Metadata/gmd:identificationInfo/gmd:MD_DataIdentification/gmd:citation/gmd:CI_Citation/gmd:title/gco:CharacterString/text()'),
         'description':       ('textList', 'gmd:MD_Metadata/gmd:identificationInfo/gmd:MD_DataIdentification/gmd:abstract/gco:CharacterString/text()'),
 
-        'creator':           ('textList', 'concat(gmd:MD_Metadata/gmd:identificationInfo/gmd:MD_DataIdentification/gmd:citation/gmd:CI_Citation/gmd:citedResponsibleParty/gmd:CI_ResponsibleParty[gmd:role/gmd:CI_RoleCode[text()="author"]]/gmd:individualName/gco:CharacterString/text(), " (", gmd:MD_Metadata/gmd:identificationInfo/gmd:MD_DataIdentification/gmd:citation/gmd:CI_Citation/gmd:citedResponsibleParty/gmd:CI_ResponsibleParty[gmd:role/gmd:CI_RoleCode[text()="author"]]/gmd:organisationName/gco:CharacterString/text(), ") ")'),
+        'creator':           ('textList', 'gmd:MD_Metadata/gmd:identificationInfo/gmd:MD_DataIdentification/gmd:citation/gmd:CI_Citation/gmd:citedResponsibleParty/gmd:CI_ResponsibleParty[gmd:role/gmd:CI_RoleCode[text()="author"]]/gmd:individualName/gco:CharacterString/text()'),
+
+        'citationContent':           ('textList', 'string(gmd:MD_Metadata/gmd:identificationInfo/gmd:MD_DataIdentification/gmd:citation/gmd:CI_Citation)'),
 
         'rights':            ('textList', 'gmd:MD_Metadata/gmd:identificationInfo/gmd:MD_DataIdentification/gmd:resourceConstraints/gmd:MD_Constraints/gmd:useLimitation/gco:CharacterString/text()'),
         'groups':            ('textList', 'gmd:MD_Metadata/gmd:identificationInfo/gmd:MD_DataIdentification/gmd:descriptiveKeywords/gmd:MD_Keywords/gmd:keyword/gco:CharacterString[text()="rock and melt physical properties" or text()="analogue models of geologic processes" or text()="paleomagnetic and magnetic data" or text()="Geochemical data (elemental and isotope geochemistry)" ]/text()'),

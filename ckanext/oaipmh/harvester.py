@@ -1,6 +1,7 @@
 import logging
 import json
 import urllib2
+import re
 
 from ckan.model import Session
 from ckan.logic import get_action
@@ -465,7 +466,36 @@ class OaipmhHarvester(HarvesterBase):
         self.package_dict['title'] = ' '.join(content['title'])
         self.package_dict['notes'] = ' '.join(content['description'])
         self.package_dict['license_id'] = content['rights'][0]
-        self.package_dict['author'] = ''.join(content['creator'])
+        
+
+	authorList = []
+	citationContent = ''.join(content['citationContent'])
+	
+	citationContent = citationContent.replace('\n', ' ')
+	citationContent = citationContent.replace('\t', ' ')
+	citationContent = citationContent.strip()
+        citationContent = re.sub(' +',' ',citationContent)
+   
+	for author in content['creator']:
+	    # search author and find the university
+	    parts = citationContent.split(author)
+
+	    # search for institute now
+	    institute = parts[1].split('author')
+	    instituteName = institute[0].strip()	
+	
+	    # how to make sure that this really is an institute???		
+            
+	    reference = author + ' ' + instituteName + ' ' + 'author'
+	    # the complete reference string must be found.
+	    # if not then  the institutename is not an institute
+	    
+	    if (citationContent.find(reference)==-1):
+	         authorList.append(author)
+	    else:		
+	        authorList.append(author + ' (' + instituteName + ')') 	
+
+	self.package_dict['author'] = ', '.join(authorList)
 
         # ORGANIZATION (LABS in EPOS)
         # Prepare organizations list with default value as last possibility
