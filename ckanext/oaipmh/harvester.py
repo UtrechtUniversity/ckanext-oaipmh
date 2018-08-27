@@ -553,8 +553,39 @@ class OaipmhHarvester(HarvesterBase):
         # EXTRAS - for datacite for EPOS -> KEYWORDS -> i.e. customization
         extras = []
 
-        if content['contact']:
-            extras.append(('Dataset contact', content['contact'][0] ))
+	log.debug('-------contactString-----------------------------')
+	log.debug(''.join(content['contactString']))
+
+
+	#-------------------------------------------------- Find contact info within contactString : institute / email
+        contactList = []
+        contactContent = ''.join(content['contactString'])
+
+        contactContent = contactContent.replace('\n', ' ')
+        contactContent = contactContent.replace('\t', ' ')
+        contactContent = contactContent.strip()
+        contactContent = re.sub(' +',' ', contactContent)
+
+	log.debug('----------------------------')
+	log.debug(contactContent)
+
+        for contact in content['contact']:
+       	    log.debug('Search contact: ' + contact)
+	    # search author and find the university
+            parts = contactContent.split(contact)
+
+	    parts2 = parts[1].split('pointOfContact')
+	    
+	    log.debug(parts2[0])
+
+	    contactList.append(contact + ' (' + parts2[0].replace('information','') + ')')
+
+	    break	# for now only 1 contact
+
+	#--------------------------------------------------------------
+        contactsJoined =  ', '.join(contactList)
+	if contactsJoined:
+            extras.append(('Dataset contact', contactsJoined))
         if content['created']:
             extras.append(('Created at repository', content['created'][0]))
         if content['publicationYear']:
@@ -578,11 +609,12 @@ class OaipmhHarvester(HarvesterBase):
                 count += 1
                 r = requests.get(urlDoiBaseGFZ + doi)
                 citeData = json.loads(r.text)
-                #log.debug(citeData['citation'])
+		data = citeData['citation'].replace('https://doi.org/','doi:')
+		log.debug(data)
                 prefix = ''
                 if count > 1:
                     prefix= ' -------- '
-                cites[citationType] += prefix + str(count) + ') ' + citeData['citation']
+                cites[citationType] += prefix + str(count) + ') ' + data
 
         if cites['supplementTo']:
             extras.append(('Is supplement to',
