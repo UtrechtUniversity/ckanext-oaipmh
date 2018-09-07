@@ -467,7 +467,6 @@ class OaipmhHarvester(HarvesterBase):
         self.package_dict['notes'] = ' '.join(content['description'])
         self.package_dict['license_id'] = content['rights'][0]
         
-
 	authorList = []
 	citationContent = ''.join(content['citationContent'])
 	
@@ -500,8 +499,11 @@ class OaipmhHarvester(HarvesterBase):
         # ORGANIZATION (LABS in EPOS)
         # Prepare organizations list with default value as last possibility
         organizations = []
-        if content['organizations']:
-            organizations = content['organizations']
+
+	log.debug('Organization: ')
+	log.debug(content['org_uuidref'])
+        if content['org_uuidref']:
+            organizations = content['org_uuidref']
 
         organizations.append('Other lab')  # 'other-lab' default value
 
@@ -534,7 +536,10 @@ class OaipmhHarvester(HarvesterBase):
         # TAGS - Hierarchical 'A > B > C > D' to be transformed to separated A, B, C, D
         tags = []
         for tag in content['tags']:
-	    tags.extend(tag.split('>'))
+	    for token in tag.split('>'):
+	    	tagItem = token.strip()
+		if tagItem <> "EARTH SCIENCE" and tagItem <> "SOLID EARTH": # as indicated in mappings V1.2, cannot be part of metadata xpath
+		    tags.append(tagItem)
 
         # remove unwanted characters
         tags = [s.replace('(', '') for s in tags]

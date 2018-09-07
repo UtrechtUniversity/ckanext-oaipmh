@@ -116,7 +116,7 @@ iso19139_fields = {
 
         'rights':            ('textList', 'gmd:MD_Metadata/gmd:identificationInfo/gmd:MD_DataIdentification/gmd:resourceConstraints/gmd:MD_Constraints/gmd:useLimitation/gco:CharacterString/text()'),
         'groups':            ('textList', 'gmd:MD_Metadata/gmd:identificationInfo/gmd:MD_DataIdentification/gmd:descriptiveKeywords/gmd:MD_Keywords/gmd:keyword/gco:CharacterString[text()="rock and melt physical properties" or text()="analogue models of geologic processes" or text()="paleomagnetic and magnetic data" or text()="Geochemical data (elemental and isotope geochemistry)" ]/text()'),
-        'tags':              ('textList', 'gmd:MD_Metadata/gmd:identificationInfo/gmd:MD_DataIdentification/gmd:descriptiveKeywords/gmd:MD_Keywords/gmd:keyword/gco:CharacterString[not(text() ="rock and melt physical properties" or text()="analogue models of geologic processes" or text()="EPOS" or text()="paleomagnetic and magnetic data" or text()="Geochemical data (elemental and isotope geochemistry")]/text()'), 
+        'tags':              ('textList', 'gmd:MD_Metadata/gmd:identificationInfo/gmd:MD_DataIdentification/gmd:descriptiveKeywords/gmd:MD_Keywords/gmd:keyword/gco:CharacterString[not(text() ="rock and melt physical properties" or text()="analogue models of geologic processes" or text()="EPOS" or text()="paleomagnetic and magnetic data" or text()="Geochemical data (elemental and isotope geochemistry)")]/text()'), 
 
         'doi':               ('textList', 'gmd:MD_Metadata/gmd:identificationInfo/gmd:MD_DataIdentification/gmd:citation/gmd:CI_Citation/gmd:identifier/gmd:MD_Identifier/gmd:code/gco:CharacterString/text()'),
         'created':           ('textList', 'gmd:MD_Metadata/gmd:identificationInfo/gmd:MD_DataIdentification/gmd:citation/gmd:CI_Citation/gmd:date/gmd:CI_Date[gmd:dateType/gmd:CI_DateTypeCode[text()="creation"]]/gmd:date/gco:Date/text()'),
@@ -141,6 +141,9 @@ iso19139_fields = {
 
 	'publisher':         ('textList', 'gmd:MD_Metadata/gmd:contact/gmd:CI_ResponsibleParty/gmd:contactInfo/gmd:CI_Contact/gmd:onlineResource/gmd:CI_OnlineResource/gmd:linkage/gmd:URL/text()'),
         'organizations':     ('textList', 'gmd:MD_Metadata/gmd:identificationInfo/gmd:MD_DataIdentification/gmd:citation/gmd:CI_Citation/gmd:citedResponsibleParty/gmd:CI_ResponsibleParty[gmd:role/gmd:CI_RoleCode[text()="originator"]]/gmd:organisationName/gco:CharacterString/text()'), 
+
+        'org_uuidref':      ('textList', 'gmd:MD_Metadata/gmd:identificationInfo/gmd:MD_DataIdentification/gmd:citation/gmd:CI_Citation/gmd:citedResponsibleParty/gmd:CI_ResponsibleParty[gmd:role/gmd:CI_RoleCode[text()="originator"]]/parent::gmd:citedResponsibleParty/@uuidref'),
+
     }
 
 iso19139_reader = MetadataReader(
