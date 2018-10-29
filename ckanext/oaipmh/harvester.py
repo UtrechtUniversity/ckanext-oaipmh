@@ -79,8 +79,6 @@ class OaipmhHarvester(HarvesterBase):
                 force_http_get=self.force_http_get
             )
 
-	    log.debug('URL: ' + harvest_job.source.url)	
-
             client.identify()  # check if identify works
             for header in self._identifier_generator(client):
                 harvest_obj = HarvestObject(
@@ -329,6 +327,15 @@ class OaipmhHarvester(HarvesterBase):
 
 	    log.debug(content)
 
+
+	    # Work out default organization based upon current harvest job.
+            harvest_source = get_action('harvest_source_show')(
+                    context,
+                    {'id': harvest_object.job.source.id}
+            )
+
+	    content['owner_org'] =  harvest_source['owner_org']  ## Pass extra information (default organization) to handling methods
+
             self.package_dict['id'] = munge_title_to_name(harvest_object.guid)
             self.package_dict['name'] = self.package_dict['id']
 
@@ -397,17 +404,24 @@ class OaipmhHarvester(HarvesterBase):
         # AUTHOR
         self.package_dict['author'] = '; '.join(content['creator'])
 
-        # ORGANIZATION (LABS->datacite)
-        organizations = [u'Unidentified']  # default value, possibly unwanted
 
-        if content['orgAffiliations']:
-            organizations = content['orgAffiliations']
-        elif content['organizations']:
-            organizations = content['organizations']
+        # DEFAULT ORGANIZATION
+	log.debug('dataciteILAB: OWNER_ORG: ' + content['owner_org'])
 
-        org_ids = self._find_or_create_entity('organization',
-                                              organizations, context)
-        self.package_dict['owner_org'] = org_ids[0]
+#        # ORGANIZATION (LABS->datacite)
+#        organizations = [u'Unidentified']  # default value, possibly unwanted
+#
+#        if content['orgAffiliations']:
+#            organizations = content['orgAffiliations']
+#        elif content['organizations']:
+#            organizations = content['organizations']
+#
+#        org_ids = self._find_or_create_entity('organization',
+#                                              organizations, context)
+#        self.package_dict['owner_org'] = org_ids[0]
+
+
+	self.package_dict['owner_org'] = content['owner_org']
 
         # HDR -> voor datacite niet juist geimplmenteerd
         self.package_dict['formats'] = 'datacite'
