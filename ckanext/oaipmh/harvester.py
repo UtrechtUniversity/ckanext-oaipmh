@@ -471,6 +471,8 @@ class OaipmhHarvester(HarvesterBase):
         if content['collectionPeriod']:
             extras.append(('Collection period', content['collectionPeriod'][0]))
 
+	# Access type still te be determined dynamically
+	extras.append(('Access type', 'Closed'))
  
 
         self.package_dict['extras'] = extras
