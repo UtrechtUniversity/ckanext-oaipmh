@@ -471,9 +471,15 @@ class OaipmhHarvester(HarvesterBase):
         if content['collectionPeriod']:
             extras.append(('Collection period', content['collectionPeriod'][0]))
 
-	# Access type still te be determined dynamically
-	extras.append(('Access type', 'Closed'))
- 
+	# Quick fix to add access type to 
+	# This will work with Yoda MOAI as there we control the order of 'rights'
+	# 0: license_id   (see above as well
+	# 1: Access type
+	
+        if len(content['rights'])==2:
+	    extras.append(('Access type',  content['rights'][1]))
+        else:
+	    extras.append(('Access type',  'Access type not present'))
 
         self.package_dict['extras'] = extras
 
