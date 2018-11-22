@@ -183,6 +183,9 @@ class OaipmhHarvester(HarvesterBase):
             # TODO: Change default back to 'oai_dc'
             self.force_http_get = config_json.get('force_http_get', False)
 
+	    # EPOS harvesting can reach to GFZ for extra info. This only when configured right
+	    self.collect_extra_info_from_gfz = config_json.get('collect_extra_info_from_gfz', '')
+
         except ValueError:
             pass
 
@@ -212,6 +215,9 @@ class OaipmhHarvester(HarvesterBase):
             log.debug('Application: ' + self.md_application)
             log.debug('Md_format: ' + self.md_format)
             log.debug('AddInfo: ' + self.additional_info)
+	    
+	    # EPOS - trick to collect extra info via GFZ - solely intended for harvesting of GFZ 
+	    log.debug('Extra citation info URL: ' + self.collect_extra_info_from_gfz)
 
             registry = self._create_metadata_registry()
             client = oaipmh.client.Client(
@@ -331,11 +337,64 @@ class OaipmhHarvester(HarvesterBase):
 
 	    content['owner_org'] =  harvest_source['owner_org']  ## Pass extra information (default organization) to handling methods
 
+	    harvest_source_organization = get_action('organization_show')(
+		    context,
+		    {'id': harvest_source['owner_org'] }
+	    )	
+
+	    # Maintainer info (name/email) )to be collected for EPOS through current harvest source organization
+            content['maintainer'] = '';
+            content['maintainer_email'] = ''
+ 
+	    for index in harvest_source_organization:		
+		if index=='extras': # capture email of maintainer
+                    for extra_avu in harvest_source_organization['extras']:
+                        if extra_avu['key'] == 'email' and extra_avu['state'] == 'active':
+                            content['maintainer_email'] = extra_avu['value']
+			    break
+		        break
+		    break
+                elif index == 'display_name': # capture name of maintainer
+		    content['maintainer'] =  harvest_source_organization['display_name']
+
+            log.info('Maintainer: ' + content['maintainer'])
+            log.info('Maintainer: ' + content['maintainer_email'])
+
             self.package_dict['id'] = munge_title_to_name(harvest_object.guid)
             self.package_dict['name'] = self.package_dict['id']
 
+            if self.md_format == 'datacite' and self.md_application == 'ILAB':
+                content['mode'] = 'ILAB'
+            elif self.md_format == 'iso19139' and self.md_application == 'EPOS':
+                content['mode'] = 'EPOS'
+
+	    # BUILD DATA PACKAGE INCLUDING ALL DEPENDANT DATA (GROUPS ETC)
+            self._handleMaintainer(content, context)
+
+            self._handleTitle(content, context)
+
+            self._handleNotes(content, context)
+
+            self._handleLicense(content, context)
+
+            self._handleAuthor(content, context)
+
+            self._handleOwner(content, context)
+
+            self._handleFormats(content, context)
+
+            self._handleUrl(content, context)
+	    
+            self._handleGroups(content, context)
+
+            self._handleTags(content, context)
+
+            self._handleExtras(content, context)
+
             # Differentiate further package creation
             # dependent on metadataPrefix.
+
+            '''
             if self.md_format == 'datacite' and self.md_application == 'ILAB':
                 self._handle_dataciteILAB(content, context)
             elif self.md_format == 'iso19139' and self.md_application == 'EPOS':
@@ -345,23 +404,24 @@ class OaipmhHarvester(HarvesterBase):
                   self.md_format == 'oai_ddi'):
                 self._handle_nonEpos(content, context,harvest_object)
 
-            # Add fields according to mapping
-            mapping = self._get_mapping()
+                # Add fields according to mapping
+                mapping = self._get_mapping()  # mapping used only for exotic formats, no longer for datacite and iso
 
-            for ckan_field, oai_field in mapping.iteritems():
-                try:
-                    if (ckan_field == 'maintainer_email' and
-                        '@' not in content[oai_field][0]):
-                        # Email not available.
-                        # Do not set email field as it will break validation.
-                        continue
-                    else:
-                        self.package_dict[ckan_field] = content[oai_field][0]
+                for ckan_field, oai_field in mapping.iteritems():
+                   try:
+                       if (ckan_field == 'maintainer_email' and
+                           '@' not in content[oai_field][0]):
+                           # Email not available.
+                           # Do not set email field as it will break validation.
+                           continue
+                       else:
+                           self.package_dict[ckan_field] = content[oai_field][0]
 
                 except (IndexError, KeyError):
                     continue
 
             log.debug('after mapping execution')
+            '''
 
             '''
             When using Datacite 3 / 4 this delivers an object queue
@@ -390,38 +450,280 @@ class OaipmhHarvester(HarvesterBase):
             return False
         return True
 
+    def _handleMaintainer(self, content, context):
+        if content['mode']=='ILAB':
+            self.package_dict['maintainer'] = 'Utrecht University'
+            self.package_dict['maintainer_email'] = 'info@uu.nl'
+        elif content['mode']=='EPOS':
+            self.package_dict['maintainer'] = content['maintainer']
+            self.package_dict['maintainer_email'] = content['maintainer_email']
 
-    # handle data where metadata prefix = datacite for ILAB application
+    def _handleTitle(self, content, context):
+        if content['mode']=='ILAB':
+            self.package_dict['title'] = content['title'][0]
+        elif content['mode']=='EPOS':
+            self.package_dict['title'] = ' '.join(content['title'])
+
+    def _handleNotes(self, content, context):
+        if content['mode']=='ILAB':
+            self.package_dict['notes'] = content['description'][0]
+        elif content['mode']=='EPOS':
+            self.package_dict['notes'] = ' '.join(content['description'])
+
+    def _handleLicense(self, content, context):
+        self.package_dict['license_id'] = content['rights'][0]
+
+    def _handleAuthor(self, content, context):
+        if content['mode']=='ILAB':
+            self.package_dict['author'] = '; '.join(content['creator'])
+        elif content['mode']=='EPOS':
+            authorList = []
+            citationContent = ''.join(content['citationContent'])
+
+            citationContent = citationContent.replace('\n', ' ')
+            citationContent = citationContent.replace('\t', ' ')
+            citationContent = citationContent.strip()
+            citationContent = re.sub(' +',' ',citationContent)
+
+            for author in content['creator']:
+                # search author and find the university
+                parts = citationContent.split(author)
+
+                # search for institute now
+                institute = parts[1].split('author')
+                instituteName = institute[0].strip()
+
+                # how to make sure that this really is an institute???
+
+                reference = author + ' ' + instituteName + ' ' + 'author'
+                # the complete reference string must be found.
+                # if not then  the institutename is not an institute
+
+                if (citationContent.find(reference)==-1):
+                    authorList.append(author)
+                else:
+                    authorList.append(author + ' (' + instituteName + ')')
+
+            self.package_dict['author'] = ', '.join(authorList)
+
+    def _handleOwner(self, content, context):
+        if content['mode']=='ILAB':
+            self.package_dict['owner_org'] = content['owner_org']
+        elif content['mode']=='EPOS':
+            # OWNER ORGANIZATION (LABS in EPOS)  with 'other-lab' as a default (this must be present in Catalog)
+            # Prepare organizations list with default value as last possibility
+            organizations = []
+
+            log.debug('Organization: ')
+            log.debug(content['org_uuidref'])
+            if content['org_uuidref']:
+                organizations = content['org_uuidref']
+
+            organizations.append('Other lab')  # 'other-lab' default value
+
+            org_id = self._find_first_entity('organization',
+                                             organizations, context)
+            log.debug('found org:' + org_id)
+
+            self.package_dict['owner_org'] = org_id
+
+    def _handleFormats(self, content, context):
+        if content['mode']=='ILAB':
+	    self.package_dict['formats'] = 'datacite'
+        elif content['mode']=='EPOS':
+            self.package_dict['formats'] = 'ISO19115'
+
+    def _handleUrl(self, content, context):
+        if content['doi']:
+            self.package_dict['url'] = 'http://doi.org/' + content['doi'][0]
+
+    def _handleGroups(self, content, context):
+        groups = []
+        if content['groups']:
+            log.debug('subjects: %s' % content['groups'])
+            groups.extend(
+                self._find_or_create_entity('group',
+                                            content['groups'],
+                                            context)
+            )
+        self.package_dict['groups'] = groups
+
+    def _handleTags(self, content, context):
+        if content['mode']=='ILAB':
+            log.debug('Tags:')
+            log.debug(content['tags'])
+            x = content['tags']
+            x = [s.replace('(', '') for s in x]
+            x = [s.replace(')', '') for s in x]
+
+            self.package_dict['tags'] = x
+
+        elif content['mode']=='EPOS':
+            # TAGS - Hierarchical 'A > B > C > D' to be transformed to separated A, B, C, D
+            tags = []
+            for tag in content['tags']:
+                for token in tag.split('>'):
+                    tagItem = token.strip()
+                    if tagItem <> "EARTH SCIENCE" and tagItem <> "SOLID EARTH": # as indicated in mappings V1.2, cannot be part of metadata xpath
+                        tags.append(tagItem)
+
+            # remove unwanted characters
+            tags = [s.replace('(', '') for s in tags]
+            tags = [s.replace(')', '') for s in tags]
+            tags = [s.replace('/', ' ') for s in tags]
+            tags = [s.replace(u'\u2019', ' ') for s in tags]
+            tags = [s.replace(u'\u2018', ' ') for s in tags]
+
+            self.package_dict['tags'] = tags
+
+    def _handleExtras(self, content, context):
+        extras = []
+	if content['mode']=='ILAB':
+            if content['geolocationPlaces']:
+                extras.append(('Locations covered',
+                              ', '.join(content['geolocationPlaces'])))
+            if content['contact']:
+                extras.append(('Dataset contact',
+                              content['contact'][0] + '-' + content['contactAffiliation'][0]))
+            if content['created']:
+                extras.append(('Created at repository',
+                               content['created'][0]))
+            if content['publicationYear']:
+                extras.append(('Year of publication',
+                               content['publicationYear'][0]))
+            if content['publisher']:
+                extras.append(('Publisher', content['publisher'][0]))
+            if content['collectionPeriod']:
+                extras.append(('Collection period', content['collectionPeriod'][0]))
+            # Add access type
+            # This will work with Yoda MOAI as there we control the order of 'rights'
+            # 0: license_id   (see above as well
+            # 1: Access type
+            if len(content['rights'])==2:
+                extras.append(('Access type',  content['rights'][1]))
+            else:
+                extras.append(('Access type',  'Access type not present'))
+
+        elif content['mode']=='EPOS':
+            # EXTRAS - for datacite for EPOS -> KEYWORDS -> i.e. customization
+            log.debug('-------contactString-----------------------------')
+            log.debug(''.join(content['contactString']))
+            #-------------------------------------------------- Find contact info within contactString : institute / email
+            contactList = []
+            contactContent = ''.join(content['contactString'])
+            contactContent = contactContent.replace('\n', ' ')
+            contactContent = contactContent.replace('\t', ' ')
+            contactContent = contactContent.strip()
+            contactContent = re.sub(' +',' ', contactContent)
+            log.debug(contactContent)
+
+            for contact in content['contact']:
+                log.debug('Search contact: ' + contact)
+                # search author and find the university
+                parts = contactContent.split(contact)
+
+                parts2 = parts[1].split('pointOfContact')
+
+                log.debug(parts2[0])
+
+                contactList.append(contact + ' (' + parts2[0].replace('information','') + ')')
+
+                break       # for now only 1 contact
+
+            #--------------------------------------------------------------
+            contactsJoined =  ', '.join(contactList)
+            if contactsJoined:
+                extras.append(('Dataset contact', contactsJoined))
+            if content['created']:
+                extras.append(('Created at repository', content['created'][0]))
+            if content['publicationYear']:
+                extras.append(('Publication date', content['publicationYear'][0]))
+
+            # Fetch extra external information regarding supplement on DOI
+            urlDoiBaseGFZ = self.collect_extra_info_from_gfz
+
+            log.info('url: ' + urlDoiBaseGFZ)
+
+            citationTypes = ['supplementTo', 'cites', 'references']
+
+            # cites holds all externally collected info per citationType
+            cites = {
+                    'supplementTo':'',
+                    'cites': '',
+                    'references': ''
+            }
+
+
+            for citationType in citationTypes:
+                count = 0
+
+                for doi in content[citationType]:
+                    count += 1
+                    data = ''
+                    if len(urlDoiBaseGFZ): # Only perform this for GFZ
+                        r = requests.get(urlDoiBaseGFZ + doi)
+                        citeData = json.loads(r.text)
+                        data = citeData['citation'].replace('https://doi.org/','doi:')
+                    prefix = ''
+                    if count > 1:
+                        prefix= ' -------- '
+                    cites[citationType] += prefix + str(count) + ') ' + data
+
+            if cites['supplementTo']:
+                extras.append(('Is supplement to',
+                               cites['supplementTo']))
+            if cites['cites']:
+                extras.append(('Cites',
+                                cites['cites']))
+            if cites['references']:
+                extras.append(('References',
+                                cites['references']))
+
+            if content['westBoundLongitude']:
+                extras.append(('geobox-wLong',
+                               content['westBoundLongitude'][0]))
+            if content['eastBoundLongitude']:
+                extras.append(('geobox-eLong',
+                               content['eastBoundLongitude'][0]))
+            if content['northBoundLatitude']:
+                extras.append(('geobox-nLat',
+                               content['northBoundLatitude'][0]))
+            if content['southBoundLatitude']:
+                extras.append(('geobox-sLat',
+                               content['southBoundLatitude'][0]))
+
+            if content['publisher']:
+                extras.append(('Publisher', content['publisher'][0]))
+
+        self.package_dict['extras'] = extras
+
     def _handle_dataciteILAB(self, content, context):
+        # MAINTAINER info - datacite for ILAB - harcoded
+        self.package_dict['maintainer'] = 'Utrecht University'
+        self.package_dict['maintainer_email'] = 'info@uu.nl'
+
+        # TITLE
+        self.package_dict['title'] = content['title'][0]
+        # NOTES
+        self.package_dict['notes'] = content['description'][0]
+        # LICENSE_ID
+        self.package_dict['license_id'] = content['rights'][0]
+
         # AUTHOR
         self.package_dict['author'] = '; '.join(content['creator'])
 
-
-        # DEFAULT ORGANIZATION
+        # OWNER ORGANIZATION through owner of harvest source
 	log.debug('dataciteILAB: OWNER_ORG: ' + content['owner_org'])
-
-#        # ORGANIZATION (LABS->datacite)
-#        organizations = [u'Unidentified']  # default value, possibly unwanted
-#
-#        if content['orgAffiliations']:
-#            organizations = content['orgAffiliations']
-#        elif content['organizations']:
-#            organizations = content['organizations']
-#
-#        org_ids = self._find_or_create_entity('organization',
-#                                              organizations, context)
-#        self.package_dict['owner_org'] = org_ids[0]
-
-
 	self.package_dict['owner_org'] = content['owner_org']
 
-        # HDR -> voor datacite niet juist geimplmenteerd
+        # FORMAT HDR -> voor datacite niet juist geimplmenteerd
         self.package_dict['formats'] = 'datacite'
 
         # URL - datacite
         if content['doi']:
             # hardcoded now, do inventory where to find this
             self.package_dict['url'] = 'http://doi.org/' + content['doi'][0]
+
 
         # GROUPS/TOPICS
         groups = []
@@ -435,7 +737,7 @@ class OaipmhHarvester(HarvesterBase):
             )
         self.package_dict['groups'] = groups
 
-        # TAGS-Datacite
+        # TAGS
         log.debug('Tags:')
         log.debug(content['tags'])
         x = content['tags']
@@ -444,12 +746,6 @@ class OaipmhHarvester(HarvesterBase):
 
         self.package_dict['tags'] = x
 
-        # LICENSE
-        self.package_dict['license_id'] = content['rights'][0]
-
-        # MAINTAINER info - datacite for ILAB - harcoded
-        self.package_dict['maintainer'] = 'Utrecht University'
-        self.package_dict['maintainer_email'] = 'info@uu.nl'
 
         # EXTRAS - for datacite for EPOS -> KEYWORDS -> i.e. customization
         extras = []
@@ -488,194 +784,6 @@ class OaipmhHarvester(HarvesterBase):
 
         self.package_dict['extras'] = extras
 
-    # handle data where metadata prefix = is19139 for EPOS application
-    def _handle_ISO19139EPOS(self, content, context):
-        # AUTHOR
-        self.package_dict['title'] = ' '.join(content['title'])
-        self.package_dict['notes'] = ' '.join(content['description'])
-        self.package_dict['license_id'] = content['rights'][0]
-        
-	authorList = []
-	citationContent = ''.join(content['citationContent'])
-	
-	citationContent = citationContent.replace('\n', ' ')
-	citationContent = citationContent.replace('\t', ' ')
-	citationContent = citationContent.strip()
-        citationContent = re.sub(' +',' ',citationContent)
-   
-	for author in content['creator']:
-	    # search author and find the university
-	    parts = citationContent.split(author)
-
-	    # search for institute now
-	    institute = parts[1].split('author')
-	    instituteName = institute[0].strip()	
-	
-	    # how to make sure that this really is an institute???		
-            
-	    reference = author + ' ' + instituteName + ' ' + 'author'
-	    # the complete reference string must be found.
-	    # if not then  the institutename is not an institute
-	    
-	    if (citationContent.find(reference)==-1):
-	         authorList.append(author)
-	    else:		
-	        authorList.append(author + ' (' + instituteName + ')') 	
-
-	self.package_dict['author'] = ', '.join(authorList)
-
-        # ORGANIZATION (LABS in EPOS)
-        # Prepare organizations list with default value as last possibility
-        organizations = []
-
-	log.debug('Organization: ')
-	log.debug(content['org_uuidref'])
-        if content['org_uuidref']:
-            organizations = content['org_uuidref']
-
-        organizations.append('Other lab')  # 'other-lab' default value
-
-        org_id = self._find_first_entity('organization',
-                                         organizations, context)
-        log.debug('found org:' + org_id)
-
-        self.package_dict['owner_org'] = org_id
-
-        # HDR -> voor datacite niet juist geimplmenteerd
-        self.package_dict['formats'] = 'datacite'
-
-        # URL - datacite
-        if content['doi']:
-            # hardcoded now, do inventory where to find this
-            self.package_dict['url'] = 'http://doi.org/' + content['doi'][0]
-
-        # GROUPS/TOPICS
-        groups = []
-        # create groups based on subjects
-        if content['groups']:
-            log.debug('subjects: %s' % content['groups'])
-            groups.extend(
-                    self._find_or_create_entity('group',
-                                                content['groups'],
-                                                context)
-            )
-        self.package_dict['groups'] = groups
-
-        # TAGS - Hierarchical 'A > B > C > D' to be transformed to separated A, B, C, D
-        tags = []
-        for tag in content['tags']:
-	    for token in tag.split('>'):
-	    	tagItem = token.strip()
-		if tagItem <> "EARTH SCIENCE" and tagItem <> "SOLID EARTH": # as indicated in mappings V1.2, cannot be part of metadata xpath
-		    tags.append(tagItem)
-
-        # remove unwanted characters
-        tags = [s.replace('(', '') for s in tags]
-        tags = [s.replace(')', '') for s in tags]
-        tags = [s.replace('/', ' ') for s in tags]
-        tags = [s.replace(u'\u2019', ' ') for s in tags]
-        tags = [s.replace(u'\u2018', ' ') for s in tags]
-
-        self.package_dict['tags'] = tags
-
-        # MAINTAINER info - datacite for EPOS - hardcoded
-        self.package_dict['maintainer'] = 'GFZ Potzdam'
-        self.package_dict['maintainer_email'] = 'info@gfz.de'
-
-
-        # EXTRAS - for datacite for EPOS -> KEYWORDS -> i.e. customization
-        extras = []
-
-	log.debug('-------contactString-----------------------------')
-	log.debug(''.join(content['contactString']))
-
-
-	#-------------------------------------------------- Find contact info within contactString : institute / email
-        contactList = []
-        contactContent = ''.join(content['contactString'])
-
-        contactContent = contactContent.replace('\n', ' ')
-        contactContent = contactContent.replace('\t', ' ')
-        contactContent = contactContent.strip()
-        contactContent = re.sub(' +',' ', contactContent)
-
-	log.debug('----------------------------')
-	log.debug(contactContent)
-
-        for contact in content['contact']:
-       	    log.debug('Search contact: ' + contact)
-	    # search author and find the university
-            parts = contactContent.split(contact)
-
-	    parts2 = parts[1].split('pointOfContact')
-	    
-	    log.debug(parts2[0])
-
-	    contactList.append(contact + ' (' + parts2[0].replace('information','') + ')')
-
-	    break	# for now only 1 contact
-
-	#--------------------------------------------------------------
-        contactsJoined =  ', '.join(contactList)
-	if contactsJoined:
-            extras.append(('Dataset contact', contactsJoined))
-        if content['created']:
-            extras.append(('Created at repository', content['created'][0]))
-        if content['publicationYear']:
-            extras.append(('Publication date', content['publicationYear'][0]))
-
-        # Fetch extra external information regarding supplement on DOI
-        urlDoiBaseGFZ = 'http://dataservices.gfz-potsdam.de/getcitationinfo.php?doi=http://dx.doi.org/'
-
-        citationTypes = ['supplementTo', 'cites', 'references']
-
-        # cites holds all externally collected info per citationType
-        cites = {
-                'supplementTo':'',
-                'cites': '',
-                'references': ''
-        }
-
-        for citationType in citationTypes:
-            count = 0
-            for doi in content[citationType]:
-                count += 1
-                r = requests.get(urlDoiBaseGFZ + doi)
-                citeData = json.loads(r.text)
-		data = citeData['citation'].replace('https://doi.org/','doi:')
-		log.debug(data)
-                prefix = ''
-                if count > 1:
-                    prefix= ' -------- '
-                cites[citationType] += prefix + str(count) + ') ' + data
-
-        if cites['supplementTo']:
-            extras.append(('Is supplement to',
-                           cites['supplementTo']))
-        if cites['cites']:
-            extras.append(('Cites',
-                            cites['cites']))
-        if cites['references']:
-            extras.append(('References',
-                            cites['references']))
-
-        if content['westBoundLongitude']:
-            extras.append(('geobox-wLong',
-                           content['westBoundLongitude'][0]))
-        if content['eastBoundLongitude']:
-            extras.append(('geobox-eLong',
-                           content['eastBoundLongitude'][0]))
-        if content['northBoundLatitude']:
-            extras.append(('geobox-nLat',
-                           content['northBoundLatitude'][0]))
-        if content['southBoundLatitude']:
-            extras.append(('geobox-sLat',
-                           content['southBoundLatitude'][0]))
-
-        if content['publisher']:
-            extras.append(('Publisher', content['publisher'][0]))
-
-        self.package_dict['extras'] = extras
 
     # handle data where metadata prefix = iso - to be defined yet
     def _handle_iso(self, content, context):
