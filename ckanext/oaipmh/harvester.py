@@ -935,11 +935,12 @@ class OaipmhHarvester(HarvesterBase):
     # For EPOS - do not create new entities but fall back to default if not found .
     # in EPOS case used for Labs (i.e. groups)
     def _find_first_entity(self, entityType, entityNames, context):
+        log.debug('------------ find first')
         log.debug(entityType + ' names: %s' % entityNames)
 
         entityId = '-1'   # Not found - should not be possible
         for entity_name in entityNames:
-            #log.debug('labname: ' + entity_name)
+            log.debug('search lab: ' + entity_name)
             #log.debug( self._utf8_and_remove_diacritics(entity_name) )
             #log.debug( munge_title_to_name(entity_name) )
             data_dict = {
@@ -947,13 +948,18 @@ class OaipmhHarvester(HarvesterBase):
             }
             log.debug(data_dict)
             try:
-                entity = get_action(entityType + '_show')(context.copy(), data_dict)
+                entity = get_action(entityType + '_show')(context, data_dict)
                 log.info('Try: found the ' + entityType + ' with id' + entity['id'])
                 entityId = entity['id']
                 break
+
             except Exception as e:
-                #log.info('Exception: ' + entity_name)
-                #log.info(str(e))
+                # Get rid of auth audit on the context otherwise we'll get an unwanted exception next time around
+                # exception
+                context.pop('__auth_audit', None)
+
+                log.info('Exception: ' + entity_name)
+                log.info(str(e))
                 continue
 
         return entityId
