@@ -663,7 +663,10 @@ class OaipmhHarvester(HarvesterBase):
                     if len(urlDoiBaseGFZ): # Only perform this for GFZ
                         r = requests.get(urlDoiBaseGFZ + doi)
                         citeData = json.loads(r.text)
-                        data = citeData['citation'].replace('https://doi.org/','doi:')
+                        try:
+			  data = citeData['citation'].replace('https://doi.org/','doi:')
+                        except:
+			  log.debug('gfz data request did not provide relevant information')
                     prefix = ''
                     if count > 1:
                         prefix= ' -------- '
@@ -694,6 +697,16 @@ class OaipmhHarvester(HarvesterBase):
 
             if content['publisher']:
                 extras.append(('Publisher', content['publisher'][0]))
+
+	    # Citation field conform specs <author> (<publicationYear): <title> <publisher> <DOI>
+	    authors = ', '.join(content['creator'])
+	    pubYear = content['publicationYear'][0][0:4]  
+            publisher = 'GFZ Dataservices'
+	    doi = self.package_dict['url']
+
+	    extras.append(('Citation', authors + ' (' + pubYear + '): ' + publisher + ' ' + doi))	
+
+
 
         self.package_dict['extras'] = extras
 
