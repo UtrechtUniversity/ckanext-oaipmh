@@ -60,6 +60,7 @@ datacite_ilabfields = {
          'rights':            ('textList', 'datacite:resource/datacite:rightsList/datacite:rights/text()'),  # noqa
          'groups':            ('textList', 'datacite:resource/datacite:subjects/datacite:subject[@subjectScheme="Keyword"]/text()'),
          'tags':              ('textList', 'datacite:resource/datacite:subjects/datacite:subject[@subjectScheme="OECD FOS 2007"]/text()'),
+         'collection':        ('textList', 'datacite:resource/datacite:subjects/datacite:subject[@subjectScheme="collection"]/text()'),
          'doi':               ('textList', 'datacite:resource/datacite:identifier[@identifierType="DOI"]/text()'),
          'created':           ('textList', 'datacite:resource/datacite:dates/datacite:date[@dateType="Created"]/text()'),
          'collectionPeriod':  ('textList', 'datacite:resource/datacite:dates/datacite:date[@dateType="Collected"]/text()'),

@@ -582,6 +582,10 @@ class OaipmhHarvester(HarvesterBase):
             if content['geolocationPlaces']:
                 extras.append(('Locations covered',
                               ', '.join(content['geolocationPlaces'])))
+            # Collection names for facet on dataset level, organization level
+            if content['collection']:
+                extras.append(('Collections',
+                              content['collection'][0]))
             if content['contact']:
                 extras.append(('Dataset contact',
                               content['contact'][0] + '-' + content['contactAffiliation'][0]))
