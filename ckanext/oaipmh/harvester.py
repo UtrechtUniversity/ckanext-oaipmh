@@ -1,32 +1,23 @@
-import logging
 import json
-import urllib2
+import logging
 import re
-
-from ckan.model import Session
-from ckan.logic import get_action
-from ckan import model
-
-from ckanext.harvest.harvesters.base import HarvesterBase
-from ckan.lib.munge import munge_tag
-from ckan.lib.munge import munge_title_to_name
-from ckanext.harvest.model import HarvestObject
-
-import oaipmh.client
-from oaipmh.metadata import MetadataRegistry
-
-from metadata import oai_ddi_reader
-from metadata import oai_dc_reader
-from metadata import dif_reader, dif_reader2
-from metadata import datacite_ilab
-from metadata import iso19139_reader
+import traceback
+import unicodedata
+import urllib2
 from pprint import pprint
 
-import traceback
-
-import unicodedata
-
 import requests
+
+import oaipmh.client
+from ckan import model
+from ckan.lib.munge import munge_tag, munge_title_to_name
+from ckan.logic import get_action
+from ckan.model import Session
+from ckanext.harvest.harvesters.base import HarvesterBase
+from ckanext.harvest.model import HarvestObject
+from metadata import (datacite_ilab, dif_reader, dif_reader2, iso19139_reader,
+                      oai_dc_reader, oai_ddi_reader)
+from oaipmh.metadata import MetadataRegistry
 
 log = logging.getLogger(__name__)
 
@@ -92,7 +83,7 @@ class OaipmhHarvester(HarvesterBase):
                 log.debug("HDR in gather stage -harvest_obj.id: %s"
                           % harvest_obj.id)
                 harvest_obj_ids.append(harvest_obj.id)
-        except urllib2.HTTPError, e:
+        except urllib2.HTTPError as e:
             log.exception(
                 'Gather stage failed on %s (%s): %s, %s'
                 % (
@@ -107,7 +98,7 @@ class OaipmhHarvester(HarvesterBase):
                 harvest_job.source.url, harvest_job
             )
             return None
-        except Exception, e:
+        except Exception as e:
             log.exception(
                 'Gather stage failed on %s: %s'
                 % (
@@ -183,8 +174,9 @@ class OaipmhHarvester(HarvesterBase):
             # TODO: Change default back to 'oai_dc'
             self.force_http_get = config_json.get('force_http_get', False)
 
-	    # EPOS harvesting can reach to GFZ for extra info. This only when configured right
-	    self.collect_extra_info_from_gfz = config_json.get('collect_extra_info_from_gfz', '')
+            # EPOS harvesting can reach to GFZ for extra info. This only when configured right
+            self.collect_extra_info_from_gfz = config_json.get(
+                'collect_extra_info_from_gfz', '')
 
         except ValueError:
             pass
@@ -211,13 +203,13 @@ class OaipmhHarvester(HarvesterBase):
             # because of differentiation possibilities in
             # namespaces for equal md_prefix.
 
-
             log.debug('Application: ' + self.md_application)
             log.debug('Md_format: ' + self.md_format)
             log.debug('AddInfo: ' + self.additional_info)
-	    
-	    # EPOS - trick to collect extra info via GFZ - solely intended for harvesting of GFZ 
-	    log.debug('Extra citation info URL: ' + self.collect_extra_info_from_gfz)
+
+            # EPOS - trick to collect extra info via GFZ - solely intended for harvesting of GFZ
+            log.debug('Extra citation info URL: ' +
+                      self.collect_extra_info_from_gfz)
 
             registry = self._create_metadata_registry()
             client = oaipmh.client.Client(
@@ -236,7 +228,7 @@ class OaipmhHarvester(HarvesterBase):
                 )
                 self._after_record_fetch(record)
 
-            except:
+            except Exception:
                 log.exception('getRecord failed')
                 self._save_object_error('Get record failed!', harvest_object)
                 return False
@@ -247,7 +239,7 @@ class OaipmhHarvester(HarvesterBase):
 
             try:
                 metadata_modified = header.datestamp().isoformat()
-            except:
+            except Exception:
                 metadata_modified = None
 
             try:
@@ -261,7 +253,7 @@ class OaipmhHarvester(HarvesterBase):
                 content = json.dumps(content_dict,
                                      ensure_ascii=False,
                                      encoding="utf-8")
-            except:
+            except Exception:
                 log.exception('Dumping the metadata failed!')
                 self._save_object_error(
                     'Dumping the metadata failed!',
@@ -271,7 +263,7 @@ class OaipmhHarvester(HarvesterBase):
 
             harvest_object.content = content
             harvest_object.save()
-        except:
+        except Exception:
             log.exception('Something went wrong 1!')
             self._save_object_error(
                 'Exception in fetch stage',
@@ -326,36 +318,36 @@ class OaipmhHarvester(HarvesterBase):
 
             content = json.loads(harvest_object.content)
 
-	    log.debug(content)
+            log.debug(content)
 
-
-	    # Work out default organization based upon current harvest job.
+            # Work out default organization based upon current harvest job.
             harvest_source = get_action('harvest_source_show')(
-                    context,
-                    {'id': harvest_object.job.source.id}
+                context,
+                {'id': harvest_object.job.source.id}
             )
 
-	    content['owner_org'] =  harvest_source['owner_org']  ## Pass extra information (default organization) to handling methods
+            # Pass extra information (default organization) to handling methods
+            content['owner_org'] = harvest_source['owner_org']
 
-	    harvest_source_organization = get_action('organization_show')(
-		    context,
-		    {'id': harvest_source['owner_org'] }
-	    )	
+            harvest_source_organization = get_action('organization_show')(
+                context,
+                {'id': harvest_source['owner_org']}
+            )
 
-	    # Maintainer info (name/email) )to be collected for EPOS through current harvest source organization
-            content['maintainer'] = '';
+            # Maintainer info (name/email) )to be collected for EPOS through current harvest source organization
+            content['maintainer'] = ''
             content['maintainer_email'] = ''
- 
-	    for index in harvest_source_organization:		
-		if index=='extras': # capture email of maintainer
+
+            for index in harvest_source_organization:
+                if index == 'extras':  # capture email of maintainer
                     for extra_avu in harvest_source_organization['extras']:
                         if extra_avu['key'] == 'email' and extra_avu['state'] == 'active':
                             content['maintainer_email'] = extra_avu['value']
-			    break
-		        break
-		    break
-                elif index == 'display_name': # capture name of maintainer
-		    content['maintainer'] =  harvest_source_organization['display_name']
+                            break
+                        break
+                    break
+                elif index == 'display_name':  # capture name of maintainer
+                    content['maintainer'] = harvest_source_organization['display_name']
 
             log.info('Maintainer: ' + content['maintainer'])
             log.info('Maintainer: ' + content['maintainer_email'])
@@ -368,7 +360,7 @@ class OaipmhHarvester(HarvesterBase):
             elif self.md_format == 'iso19139' and self.md_application == 'EPOS':
                 content['mode'] = 'EPOS'
 
-	    # BUILD DATA PACKAGE INCLUDING ALL DEPENDANT DATA (GROUPS ETC)
+            # BUILD DATA PACKAGE INCLUDING ALL DEPENDANT DATA (GROUPS ETC)
             self._handleMaintainer(content, context)
 
             self._handleTitle(content, context)
@@ -384,7 +376,7 @@ class OaipmhHarvester(HarvesterBase):
             self._handleFormats(content, context)
 
             self._handleUrl(content, context)
-	    
+
             self._handleGroups(content, context)
 
             self._handleTags(content, context)
@@ -432,7 +424,7 @@ class OaipmhHarvester(HarvesterBase):
             (added/updated) where this was not valid. By simply checking
             the presence of 'title' should solve this.
             '''
-            #log.debug('Create/update package using dict: %s'
+            # log.debug('Create/update package using dict: %s'
             #          % self.package_dict)
             if 'title' in self.package_dict and self.package_dict['title']:
                 self._create_or_update_package(
@@ -441,7 +433,7 @@ class OaipmhHarvester(HarvesterBase):
                 )
 
             Session.commit()
-        except:
+        except Exception:
             log.exception('Something went wrong!')
             self._save_object_error(
                 'Exception in import stage',
@@ -451,39 +443,39 @@ class OaipmhHarvester(HarvesterBase):
         return True
 
     def _handleMaintainer(self, content, context):
-        if content['mode']=='ILAB':
+        if content['mode'] =='ILAB':
             self.package_dict['maintainer'] = 'Utrecht University'
             self.package_dict['maintainer_email'] = 'info@uu.nl'
-        elif content['mode']=='EPOS':
+        elif content['mode'] =='EPOS':
             self.package_dict['maintainer'] = content['maintainer']
             self.package_dict['maintainer_email'] = content['maintainer_email']
 
     def _handleTitle(self, content, context):
-        if content['mode']=='ILAB':
+        if content['mode'] =='ILAB':
             self.package_dict['title'] = content['title'][0]
-        elif content['mode']=='EPOS':
+        elif content['mode'] =='EPOS':
             self.package_dict['title'] = ' '.join(content['title'])
 
     def _handleNotes(self, content, context):
-        if content['mode']=='ILAB':
+        if content['mode'] =='ILAB':
             self.package_dict['notes'] = content['description'][0]
-        elif content['mode']=='EPOS':
+        elif content['mode'] =='EPOS':
             self.package_dict['notes'] = ' '.join(content['description'])
 
     def _handleLicense(self, content, context):
         self.package_dict['license_id'] = content['rights'][0]
 
     def _handleAuthor(self, content, context):
-        if content['mode']=='ILAB':
+        if content['mode'] =='ILAB':
             self.package_dict['author'] = '; '.join(content['creator'])
-        elif content['mode']=='EPOS':
+        elif content['mode'] =='EPOS':
             authorList = []
             citationContent = ''.join(content['citationContent'])
 
             citationContent = citationContent.replace('\n', ' ')
             citationContent = citationContent.replace('\t', ' ')
             citationContent = citationContent.strip()
-            citationContent = re.sub(' +',' ',citationContent)
+            citationContent = re.sub(' +', ' ',citationContent)
 
             for author in content['creator']:
                 # search author and find the university
@@ -499,7 +491,7 @@ class OaipmhHarvester(HarvesterBase):
                 # the complete reference string must be found.
                 # if not then  the institutename is not an institute
 
-                if (citationContent.find(reference)==-1):
+                if (citationContent.find(reference) ==-1):
                     authorList.append(author)
                 else:
                     authorList.append(author + ' (' + instituteName + ')')
@@ -507,9 +499,9 @@ class OaipmhHarvester(HarvesterBase):
             self.package_dict['author'] = ', '.join(authorList)
 
     def _handleOwner(self, content, context):
-        if content['mode']=='ILAB':
+        if content['mode'] =='ILAB':
             self.package_dict['owner_org'] = content['owner_org']
-        elif content['mode']=='EPOS':
+        elif content['mode'] =='EPOS':
             # OWNER ORGANIZATION (LABS in EPOS)  with 'other-lab' as a default (this must be present in Catalog)
             # Prepare organizations list with default value as last possibility
             organizations = []
@@ -528,9 +520,9 @@ class OaipmhHarvester(HarvesterBase):
             self.package_dict['owner_org'] = org_id
 
     def _handleFormats(self, content, context):
-        if content['mode']=='ILAB':
-	    self.package_dict['formats'] = 'datacite'
-        elif content['mode']=='EPOS':
+        if content['mode'] =='ILAB':
+            self.package_dict['formats'] = 'datacite'
+        elif content['mode'] =='EPOS':
             self.package_dict['formats'] = 'ISO19115'
 
     def _handleUrl(self, content, context):
@@ -549,7 +541,7 @@ class OaipmhHarvester(HarvesterBase):
         self.package_dict['groups'] = groups
 
     def _handleTags(self, content, context):
-        if content['mode']=='ILAB':
+        if content['mode'] =='ILAB':
             log.debug('Tags:')
             log.debug(content['tags'])
             x = content['tags']
@@ -558,13 +550,13 @@ class OaipmhHarvester(HarvesterBase):
 
             self.package_dict['tags'] = x
 
-        elif content['mode']=='EPOS':
+        elif content['mode'] =='EPOS':
             # TAGS - Hierarchical 'A > B > C > D' to be transformed to separated A, B, C, D
             tags = []
             for tag in content['tags']:
                 for token in tag.split('>'):
                     tagItem = token.strip()
-                    if tagItem <> "EARTH SCIENCE" and tagItem <> "SOLID EARTH": # as indicated in mappings V1.2, cannot be part of metadata xpath
+                    if tagItem != "EARTH SCIENCE" and tagItem != "SOLID EARTH":  # as indicated in mappings V1.2, cannot be part of metadata xpath
                         tags.append(tagItem)
 
             # remove unwanted characters
@@ -578,17 +570,17 @@ class OaipmhHarvester(HarvesterBase):
 
     def _handleExtras(self, content, context):
         extras = []
-	if content['mode']=='ILAB':
+        if content['mode'] =='ILAB':
             if content['geolocationPlaces']:
                 extras.append(('Locations covered',
-                              ', '.join(content['geolocationPlaces'])))
+                               ', '.join(content['geolocationPlaces'])))
             # Collection names for facet on dataset level, organization level
             if content['collection']:
                 extras.append(('Collections',
-                              content['collection'][0]))
+                               content['collection'][0]))
             if content['contact']:
                 extras.append(('Dataset contact',
-                              content['contact'][0] + '-' + content['contactAffiliation'][0]))
+                               content['contact'][0] + '-' + content['contactAffiliation'][0]))
             if content['created']:
                 extras.append(('Created at repository',
                                content['created'][0]))
@@ -598,27 +590,28 @@ class OaipmhHarvester(HarvesterBase):
             if content['publisher']:
                 extras.append(('Publisher', content['publisher'][0]))
             if content['collectionPeriod']:
-                extras.append(('Collection period', content['collectionPeriod'][0]))
+                extras.append(
+                    ('Collection period', content['collectionPeriod'][0]))
             # Add access type
             # This will work with Yoda MOAI as there we control the order of 'rights'
             # 0: license_id   (see above as well
             # 1: Access type
-            if len(content['rights'])==2:
+            if len(content['rights']) ==2:
                 extras.append(('Access type',  content['rights'][1]))
             else:
                 extras.append(('Access type',  'Access type not present'))
 
-        elif content['mode']=='EPOS':
+        elif content['mode'] =='EPOS':
             # EXTRAS - for datacite for EPOS -> KEYWORDS -> i.e. customization
             log.debug('-------contactString-----------------------------')
             log.debug(''.join(content['contactString']))
-            #-------------------------------------------------- Find contact info within contactString : institute / email
+            # -------------------------------------------------- Find contact info within contactString : institute / email
             contactList = []
             contactContent = ''.join(content['contactString'])
             contactContent = contactContent.replace('\n', ' ')
             contactContent = contactContent.replace('\t', ' ')
             contactContent = contactContent.strip()
-            contactContent = re.sub(' +',' ', contactContent)
+            contactContent = re.sub(' +', ' ', contactContent)
             log.debug(contactContent)
 
             for contact in content['contact']:
@@ -630,18 +623,19 @@ class OaipmhHarvester(HarvesterBase):
 
                 log.debug(parts2[0])
 
-                contactList.append(contact + ' (' + parts2[0].replace('information','') + ')')
+                contactList.append(contact + ' (' + parts2[0].replace('information', '') + ')')
 
                 break       # for now only 1 contact
 
-            #--------------------------------------------------------------
-            contactsJoined =  ', '.join(contactList)
+            # --------------------------------------------------------------
+            contactsJoined = ', '.join(contactList)
             if contactsJoined:
                 extras.append(('Dataset contact', contactsJoined))
             if content['created']:
                 extras.append(('Created at repository', content['created'][0]))
             if content['publicationYear']:
-                extras.append(('Publication date', content['publicationYear'][0]))
+                extras.append(
+                    ('Publication date', content['publicationYear'][0]))
 
             # Fetch extra external information regarding supplement on DOI
             urlDoiBaseGFZ = self.collect_extra_info_from_gfz
@@ -652,11 +646,10 @@ class OaipmhHarvester(HarvesterBase):
 
             # cites holds all externally collected info per citationType
             cites = {
-                    'supplementTo':'',
+                    'supplementTo': '',
                     'cites': '',
                     'references': ''
             }
-
 
             for citationType in citationTypes:
                 count = 0
@@ -664,16 +657,17 @@ class OaipmhHarvester(HarvesterBase):
                 for doi in content[citationType]:
                     count += 1
                     data = ''
-                    if len(urlDoiBaseGFZ): # Only perform this for GFZ
+                    if len(urlDoiBaseGFZ):  # Only perform this for GFZ
                         r = requests.get(urlDoiBaseGFZ + doi)
                         citeData = json.loads(r.text)
                         try:
-			  data = citeData['citation'].replace('https://doi.org/','doi:')
-                        except:
-			  log.debug('gfz data request did not provide relevant information')
+                            data = citeData['citation'].replace('https://doi.org/', 'doi:')
+                        except Exception:
+                            log.debug(
+                                'gfz data request did not provide relevant information')
                     prefix = ''
                     if count > 1:
-                        prefix= ' -------- '
+                        prefix = ' -------- '
                     cites[citationType] += prefix + str(count) + ') ' + data
 
             if cites['supplementTo']:
@@ -681,10 +675,10 @@ class OaipmhHarvester(HarvesterBase):
                                cites['supplementTo']))
             if cites['cites']:
                 extras.append(('Cites',
-                                cites['cites']))
+                               cites['cites']))
             if cites['references']:
                 extras.append(('References',
-                                cites['references']))
+                               cites['references']))
 
             if content['westBoundLongitude']:
                 extras.append(('geobox-wLong',
@@ -702,14 +696,14 @@ class OaipmhHarvester(HarvesterBase):
             if content['publisher']:
                 extras.append(('Publisher', content['publisher'][0]))
 
-	    # Citation field conform specs <author> (<publicationYear): <title> <publisher> <DOI>
-	    authors = ', '.join(content['creator'])
-	    pubYear = content['publicationYear'][0][0:4]  
+            # Citation field conform specs <author> (<publicationYear): <title> <publisher> <DOI>
+            authors = ', '.join(content['creator'])
+            pubYear = content['publicationYear'][0][0:4]
             publisher = 'GFZ Dataservices'
-	    doi = self.package_dict['url']
+            doi = self.package_dict['url']
 
-	    extras.append(('Citation', authors + ' (' + pubYear + '): ' + publisher + ' ' + doi))	
-
+            extras.append(
+                ('Citation', authors + ' (' + pubYear + '): ' + publisher + ' ' + doi))
 
 
         self.package_dict['extras'] = extras
@@ -726,7 +720,7 @@ class OaipmhHarvester(HarvesterBase):
 
         # ORGANIZATION
         source_dataset = get_action('package_show')(
-           context,
+            context,
            {'id': harvest_object.source.id}
         )
         owner_org = source_dataset.get('owner_org')
@@ -734,7 +728,8 @@ class OaipmhHarvester(HarvesterBase):
         self.package_dict['owner_org'] = owner_org
 
         # LICENSE
-        self.package_dict['license_id'] = self._nonEpos_extract_license_id(content)
+        self.package_dict['license_id'] = self._nonEpos_extract_license_id(
+            content)
 
         # FORMATS
         # TODO: Need to map to CKAN author field
@@ -743,7 +738,8 @@ class OaipmhHarvester(HarvesterBase):
 
         # RESOURCES
         url = self._nonEpos_get_possible_resource(harvest_object, content)
-        self.package_dict['resources'] = self._nonEpos_extract_resources(url, content)
+        self.package_dict['resources'] = self._nonEpos_extract_resources(
+            url, content)
 
         # groups aka projects
         groups = []
@@ -781,7 +777,7 @@ class OaipmhHarvester(HarvesterBase):
             }
         elif self.md_format == 'iso19139':
             return {
-                #'title': 'title'
+                # 'title': 'title'
             }
 
         elif self.md_format == 'dif':
@@ -814,9 +810,11 @@ class OaipmhHarvester(HarvesterBase):
 
     def _nonEpos_extract_author(self, content):
         if self.md_format == 'dif':
-            dataset_creator = ', '.join(content['Data_Set_Citation/Dataset_Creator'])
+            dataset_creator = ', '.join(
+                content['Data_Set_Citation/Dataset_Creator'])
             # TODO: Remove publisher? Is not part of mapping...
-            dataset_publisher = ', '.join(content['Data_Set_Citation/Dataset_Publisher'])
+            dataset_publisher = ', '.join(
+                content['Data_Set_Citation/Dataset_Publisher'])
             if 'not available' not in dataset_creator.lower():
                 return dataset_creator
             elif 'not available' not in dataset_publisher.lower():
@@ -833,7 +831,7 @@ class OaipmhHarvester(HarvesterBase):
             # TODO: Generalize in own function to check for both
             #       'Not available' and None value
             if ('not available' not in use_constraints.lower()
-            and 'not available' not in access_constraints.lower()):
+                and 'not available' not in access_constraints.lower()):
                 return '{0}, {1}'.format(use_constraints, access_constraints)
             elif 'not available' not in use_constraints.lower():
                 return use_constraints
@@ -922,7 +920,7 @@ class OaipmhHarvester(HarvesterBase):
         else:
             resources = []
             # url = urls[0]
-            if False: # url
+            if False:  # url
                 try:
                     # TODO: Use _nonEpos_extract_formats to get format
                     resource_format = content['format'][0]
@@ -966,7 +964,8 @@ class OaipmhHarvester(HarvesterBase):
             log.debug(data_dict)
             try:
                 entity = get_action(entityType + '_show')(context, data_dict)
-                log.info('Try: found the ' + entityType + ' with id' + entity['id'])
+                log.info('Try: found the ' + entityType + \
+                         ' with id' + entity['id'])
                 entityId = entity['id']
                 break
 
@@ -981,8 +980,8 @@ class OaipmhHarvester(HarvesterBase):
 
         return entityId
 
-
     # generic function for finding/creation of multiple entities (groups/organizations)
+
     def _find_or_create_entity(self, entityType, entityNames, context):
         log.debug(entityType + ' names: %s' % entityNames)
         entity_ids = []
@@ -995,7 +994,7 @@ class OaipmhHarvester(HarvesterBase):
             try:
                 entity = get_action(entityType + '_show')(context, data_dict)
                 log.info('found the ' + entityType + ' with id' + entity['id'])
-            except:
+            except Exception:
                 entity = self._create_entity(entityType, data_dict, context)
 
             entity_ids.append(entity['id'])
@@ -1009,12 +1008,13 @@ class OaipmhHarvester(HarvesterBase):
         try:
             newEntity = get_action(entityType + '_create')(context, entityDict)
             log.info('Created ' + entityTpe + ' with id: ' + newEntity['id'])
-        except:
+        except Exception:
             # entityDict already holds the correct id
             # So if problems during creations
             # return the value already known.
             # Log it though
-            log.info('Creation of ' + entityType + ' was troublesome-revert to: ' + entityDict['id'])
+            log.info('Creation of ' + entityType + \
+                     ' was troublesome-revert to: ' + entityDict['id'])
             newEntity = {
                 'id': entityDict['id']
             }
