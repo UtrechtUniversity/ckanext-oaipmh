@@ -1,10 +1,8 @@
 import json
 import logging
 import re
-import traceback
 import unicodedata
 import urllib
-from pprint import pprint
 
 import requests
 
@@ -15,7 +13,7 @@ from ckan.logic import get_action
 from ckan.model import Session
 from ckanext.harvest.harvesters.base import HarvesterBase
 from ckanext.harvest.model import HarvestObject
-from metadata import (datacite_ilab, dif_reader, dif_reader2, iso19139_reader,
+from metadata import (datacite_ilab, dif_reader2, iso19139_reader,
                       oai_dc_reader, oai_ddi_reader)
 from oaipmh.metadata import MetadataRegistry
 
@@ -443,39 +441,39 @@ class OaipmhHarvester(HarvesterBase):
         return True
 
     def _handleMaintainer(self, content, context):
-        if content['mode'] =='ILAB':
+        if content['mode'] == 'ILAB':
             self.package_dict['maintainer'] = 'Utrecht University'
             self.package_dict['maintainer_email'] = 'info@uu.nl'
-        elif content['mode'] =='EPOS':
+        elif content['mode'] == 'EPOS':
             self.package_dict['maintainer'] = content['maintainer']
             self.package_dict['maintainer_email'] = content['maintainer_email']
 
     def _handleTitle(self, content, context):
-        if content['mode'] =='ILAB':
+        if content['mode'] == 'ILAB':
             self.package_dict['title'] = content['title'][0]
-        elif content['mode'] =='EPOS':
+        elif content['mode'] == 'EPOS':
             self.package_dict['title'] = ' '.join(content['title'])
 
     def _handleNotes(self, content, context):
-        if content['mode'] =='ILAB':
+        if content['mode'] == 'ILAB':
             self.package_dict['notes'] = content['description'][0]
-        elif content['mode'] =='EPOS':
+        elif content['mode'] == 'EPOS':
             self.package_dict['notes'] = ' '.join(content['description'])
 
     def _handleLicense(self, content, context):
         self.package_dict['license_id'] = content['rights'][0]
 
     def _handleAuthor(self, content, context):
-        if content['mode'] =='ILAB':
+        if content['mode'] == 'ILAB':
             self.package_dict['author'] = '; '.join(content['creator'])
-        elif content['mode'] =='EPOS':
+        elif content['mode'] == 'EPOS':
             authorList = []
             citationContent = ''.join(content['citationContent'])
 
             citationContent = citationContent.replace('\n', ' ')
             citationContent = citationContent.replace('\t', ' ')
             citationContent = citationContent.strip()
-            citationContent = re.sub(' +', ' ',citationContent)
+            citationContent = re.sub(' +', ' ', citationContent)
 
             for author in content['creator']:
                 # search author and find the university
@@ -491,7 +489,7 @@ class OaipmhHarvester(HarvesterBase):
                 # the complete reference string must be found.
                 # if not then  the institutename is not an institute
 
-                if (citationContent.find(reference) ==-1):
+                if citationContent.find(reference) == -1:
                     authorList.append(author)
                 else:
                     authorList.append(author + ' (' + instituteName + ')')
@@ -499,9 +497,9 @@ class OaipmhHarvester(HarvesterBase):
             self.package_dict['author'] = ', '.join(authorList)
 
     def _handleOwner(self, content, context):
-        if content['mode'] =='ILAB':
+        if content['mode'] == 'ILAB':
             self.package_dict['owner_org'] = content['owner_org']
-        elif content['mode'] =='EPOS':
+        elif content['mode'] == 'EPOS':
             # OWNER ORGANIZATION (LABS in EPOS)  with 'other-lab' as a default (this must be present in Catalog)
             # Prepare organizations list with default value as last possibility
             organizations = []
@@ -520,9 +518,9 @@ class OaipmhHarvester(HarvesterBase):
             self.package_dict['owner_org'] = org_id
 
     def _handleFormats(self, content, context):
-        if content['mode'] =='ILAB':
+        if content['mode'] == 'ILAB':
             self.package_dict['formats'] = 'datacite'
-        elif content['mode'] =='EPOS':
+        elif content['mode'] == 'EPOS':
             self.package_dict['formats'] = 'ISO19115'
 
     def _handleUrl(self, content, context):
@@ -541,7 +539,7 @@ class OaipmhHarvester(HarvesterBase):
         self.package_dict['groups'] = groups
 
     def _handleTags(self, content, context):
-        if content['mode'] =='ILAB':
+        if content['mode'] == 'ILAB':
             log.debug('Tags:')
             log.debug(content['tags'])
             x = content['tags']
@@ -550,7 +548,7 @@ class OaipmhHarvester(HarvesterBase):
 
             self.package_dict['tags'] = x
 
-        elif content['mode'] =='EPOS':
+        elif content['mode'] == 'EPOS':
             # TAGS - Hierarchical 'A > B > C > D' to be transformed to separated A, B, C, D
             tags = []
             for tag in content['tags']:
@@ -570,7 +568,7 @@ class OaipmhHarvester(HarvesterBase):
 
     def _handleExtras(self, content, context):
         extras = []
-        if content['mode'] =='ILAB':
+        if content['mode'] == 'ILAB':
             if content['geolocationPlaces']:
                 extras.append(('Locations covered',
                                ', '.join(content['geolocationPlaces'])))
@@ -596,12 +594,12 @@ class OaipmhHarvester(HarvesterBase):
             # This will work with Yoda MOAI as there we control the order of 'rights'
             # 0: license_id   (see above as well
             # 1: Access type
-            if len(content['rights']) ==2:
+            if len(content['rights']) == 2:
                 extras.append(('Access type',  content['rights'][1]))
             else:
                 extras.append(('Access type',  'Access type not present'))
 
-        elif content['mode'] =='EPOS':
+        elif content['mode'] == 'EPOS':
             # EXTRAS - for datacite for EPOS -> KEYWORDS -> i.e. customization
             log.debug('-------contactString-----------------------------')
             log.debug(''.join(content['contactString']))
@@ -645,11 +643,9 @@ class OaipmhHarvester(HarvesterBase):
             citationTypes = ['supplementTo', 'cites', 'references']
 
             # cites holds all externally collected info per citationType
-            cites = {
-                    'supplementTo': '',
-                    'cites': '',
-                    'references': ''
-            }
+            cites = {'supplementTo': '',
+                     'cites': '',
+                     'references': ''}
 
             for citationType in citationTypes:
                 count = 0
@@ -705,7 +701,6 @@ class OaipmhHarvester(HarvesterBase):
             extras.append(
                 ('Citation', authors + ' (' + pubYear + '): ' + publisher + ' ' + doi))
 
-
         self.package_dict['extras'] = extras
 
     # handle data where metadata prefix = iso - to be defined yet
@@ -721,7 +716,7 @@ class OaipmhHarvester(HarvesterBase):
         # ORGANIZATION
         source_dataset = get_action('package_show')(
             context,
-           {'id': harvest_object.source.id}
+            {'id': harvest_object.source.id}
         )
         owner_org = source_dataset.get('owner_org')
         # log.debug(owner_org)
@@ -830,8 +825,8 @@ class OaipmhHarvester(HarvesterBase):
             access_constraints = ', '.join(content['Access_Constraints'])
             # TODO: Generalize in own function to check for both
             #       'Not available' and None value
-            if ('not available' not in use_constraints.lower()
-                and 'not available' not in access_constraints.lower()):
+            if ('not available' not in use_constraints.lower() and
+               'not available' not in access_constraints.lower()):
                 return '{0}, {1}'.format(use_constraints, access_constraints)
             elif 'not available' not in use_constraints.lower():
                 return use_constraints
@@ -956,16 +951,15 @@ class OaipmhHarvester(HarvesterBase):
         entityId = '-1'   # Not found - should not be possible
         for entity_name in entityNames:
             log.debug('search lab: ' + entity_name)
-            #log.debug( self._utf8_and_remove_diacritics(entity_name) )
-            #log.debug( munge_title_to_name(entity_name) )
+            # log.debug( self._utf8_and_remove_diacritics(entity_name) )
+            # log.debug( munge_title_to_name(entity_name) )
             data_dict = {
                 'id': munge_title_to_name(entity_name),
             }
             log.debug(data_dict)
             try:
                 entity = get_action(entityType + '_show')(context, data_dict)
-                log.info('Try: found the ' + entityType + \
-                         ' with id' + entity['id'])
+                log.info('Try: found the ' + entityType + ' with id' + entity['id'])
                 entityId = entity['id']
                 break
 
@@ -1007,13 +1001,13 @@ class OaipmhHarvester(HarvesterBase):
     def _create_entity(self, entityType, entityDict, context):
         try:
             newEntity = get_action(entityType + '_create')(context, entityDict)
-            log.info('Created ' + entityTpe + ' with id: ' + newEntity['id'])
+            log.info('Created ' + entityType + ' with id: ' + newEntity['id'])
         except Exception:
             # entityDict already holds the correct id
             # So if problems during creations
             # return the value already known.
             # Log it though
-            log.info('Creation of ' + entityType + \
+            log.info('Creation of ' + entityType +
                      ' was troublesome-revert to: ' + entityDict['id'])
             newEntity = {
                 'id': entityDict['id']
@@ -1022,5 +1016,5 @@ class OaipmhHarvester(HarvesterBase):
         return newEntity
 
     def _utf8_and_remove_diacritics(self, input_str):
-        nkfd_form = unicodedata.normalize('NFKD', unicode(input_str))
+        nkfd_form = unicodedata.normalize('NFKD', str(input_str))
         return (u"".join([c for c in nkfd_form if not unicodedata.combining(c)])).encode('utf-8')

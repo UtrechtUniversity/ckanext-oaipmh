@@ -1,24 +1,20 @@
-import sys
 import logging
 
-# from oaipmh.metadata import MetadataReader
 from oaipmh import common
 from lxml import etree
 
 
 log = logging.getLogger(__name__)
 
-if sys.version_info[0] == 3:
-    text_type = str
-else:
-    text_type = unicode  # noqa
 
 class Error(Exception):
     pass
 
+
 class MetadataReader(object):
     """A default implementation of a reader based on fields.
     """
+
     def __init__(self, fields, namespaces=None):
         self._fields = fields
         self._namespaces = namespaces or {}
@@ -34,18 +30,19 @@ class MetadataReader(object):
         e = xpath_evaluator.evaluate
         # now extra field info according to xpath expr
         for field_name, (field_type, expr) in list(self._fields.items()):
-	    if field_type == 'bytes':
+            if field_type == 'bytes':
                 value = str(e(expr))
             elif field_type == 'bytesList':
                 value = [str(item) for item in e(expr)]
             elif field_type == 'text':
                 # make sure we get back unicode strings instead
                 # of lxml.etree._ElementUnicodeResult objects.
-                value = text_type(e(expr))
+                value = str(e(expr))
             elif field_type == 'textList':
                 # make sure we get back unicode strings instead
                 # of lxml.etree._ElementUnicodeResult objects.
-                value = [unicode(v) for v in e(expr)]  # [text_type(v) for v in e(expr)]
+                # [str(v) for v in e(expr)]
+                value = [str(v) for v in e(expr)]
             else:
                 raise Error("Unknown field type: %s" % field_type)
             map[field_name] = value
@@ -94,69 +91,53 @@ datacite_fields = {
         'supplementTo':      ('textList', 'default:resource/default:relatedIdentifiers/default:relatedIdentifier[@relatedIdentifierType="DOI" and @relationType="IsSupplementTo"]/text()'),
         'cites':             ('textList', 'default:resource/default:relatedIdentifiers/default:relatedIdentifier[@relatedIdentifierType="DOI" and @relationType="Cites"]/text()'),
         'references':        ('textList', 'default:resource/default:relatedIdentifiers/default:relatedIdentifier[@relatedIdentifierType="DOI" and @relationType="References"]/text()'),
-        'westBoundLongitude':('textList', 'default:resource/default:geoLocations/default:geoLocation/default:geoLocationBox/default:westBoundLongitude/text()'),
-        'eastBoundLongitude':('textList', 'default:resource/default:geoLocations/default:geoLocation/default:geoLocationBox/default:westBoundLongitude/text()'),
-        'southBoundLatitude':('textList', 'default:resource/default:geoLocations/default:geoLocation/default:geoLocationBox/default:southBoundLatitude/text()'),
-        'northBoundLatitude':('textList', 'default:resource/default:geoLocations/default:geoLocation/default:geoLocationBox/default:northBoundLatitude/text()'),
+        'westBoundLongitude': ('textList', 'default:resource/default:geoLocations/default:geoLocation/default:geoLocationBox/default:westBoundLongitude/text()'),
+        'eastBoundLongitude': ('textList', 'default:resource/default:geoLocations/default:geoLocation/default:geoLocationBox/default:westBoundLongitude/text()'),
+        'southBoundLatitude': ('textList', 'default:resource/default:geoLocations/default:geoLocation/default:geoLocationBox/default:southBoundLatitude/text()'),
+        'northBoundLatitude': ('textList', 'default:resource/default:geoLocations/default:geoLocation/default:geoLocationBox/default:northBoundLatitude/text()'),
         'contact':           ('textList', 'default:resource/default:contributors/default:contributor[@contributorType="ContactPerson"]/default:contributorName/text()'),
-        'contactAffiliation':('textList', 'default:resource/default:contributors/default:contributor[@contributorType="ContactPerson"]/default:affiliation/text()'),
+        'contactAffiliation': ('textList', 'default:resource/default:contributors/default:contributor[@contributorType="ContactPerson"]/default:affiliation/text()'),
         'contactEmail':      ('textList', 'default:resource/default:titles/default:title/text()'),
         'publisher':         ('textList', 'default:resource/default:publisher/text()'),
         'organizations':     ('textList', 'default:resource/default:contributors/default:contributor[@contributorType="HostingInstitution"]/default:contributorName/text()'),
         'orgAffiliations':    ('textList', 'default:resource/default:contributors/default:contributor[@contributorType="HostingInstitution"]/default:affiliation/text()')
     }
 
-
 iso19139_fields = {
-        'title':             ('textList', 'gmd:MD_Metadata/gmd:identificationInfo/gmd:MD_DataIdentification/gmd:citation/gmd:CI_Citation/gmd:title/gco:CharacterString/text()'),
-        'description':       ('textList', 'gmd:MD_Metadata/gmd:identificationInfo/gmd:MD_DataIdentification/gmd:abstract/gco:CharacterString/text()'),
-
-        'creator':           ('textList', 'gmd:MD_Metadata/gmd:identificationInfo/gmd:MD_DataIdentification/gmd:citation/gmd:CI_Citation/gmd:citedResponsibleParty/gmd:CI_ResponsibleParty[gmd:role/gmd:CI_RoleCode[text()="author"]]/gmd:individualName/gco:CharacterString/text()'),
-
-        'citationContent':           ('textList', 'string(gmd:MD_Metadata/gmd:identificationInfo/gmd:MD_DataIdentification/gmd:citation/gmd:CI_Citation)'),
-
-        'rights':            ('textList', 'gmd:MD_Metadata/gmd:identificationInfo/gmd:MD_DataIdentification/gmd:resourceConstraints/gmd:MD_Constraints/gmd:useLimitation/gco:CharacterString/text()'),
-        'groups':            ('textList', 'gmd:MD_Metadata/gmd:identificationInfo/gmd:MD_DataIdentification/gmd:descriptiveKeywords/gmd:MD_Keywords/gmd:keyword/gco:CharacterString[text()="rock and melt physical properties" or text()="analogue models of geologic processes" or text()="paleomagnetic and magnetic data" or text()="Geochemical data (elemental and isotope geochemistry)" ]/text()'),
-        'tags':              ('textList', 'gmd:MD_Metadata/gmd:identificationInfo/gmd:MD_DataIdentification/gmd:descriptiveKeywords/gmd:MD_Keywords/gmd:keyword/gco:CharacterString[not(text() ="rock and melt physical properties" or text()="analogue models of geologic processes" or text()="EPOS" or text()="paleomagnetic and magnetic data" or text()="Geochemical data (elemental and isotope geochemistry)")]/text()'), 
-
-        'doi':               ('textList', 'gmd:MD_Metadata/gmd:identificationInfo/gmd:MD_DataIdentification/gmd:citation/gmd:CI_Citation/gmd:identifier/gmd:MD_Identifier/gmd:code/gco:CharacterString/text()'),
-        'created':           ('textList', 'gmd:MD_Metadata/gmd:identificationInfo/gmd:MD_DataIdentification/gmd:citation/gmd:CI_Citation/gmd:date/gmd:CI_Date[gmd:dateType/gmd:CI_DateTypeCode[text()="creation"]]/gmd:date/gco:Date/text()'),
-        'publicationYear':   ('textList', 'gmd:MD_Metadata/gmd:identificationInfo/gmd:MD_DataIdentification/gmd:citation/gmd:CI_Citation/gmd:date/gmd:CI_Date/gmd:date/gco:Date/text()'),
-
-
-        'supplementTo':      ('textList', 'gmd:MD_Metadata/gmd:identificationInfo/gmd:MD_DataIdentification/gmd:aggregationInfo/gmd:MD_AggregateInformation[gmd:associationType/gmd:DS_AssociationTypeCode[text()="IsSupplementTo"]]/gmd:aggregateDataSetIdentifier/gmd:RS_Identifier[gmd:codeSpace/gco:CharacterString[text()="DOI"]]/gmd:code/gco:CharacterString/text()'),
-
-        'references':      ('textList', 'gmd:MD_Metadata/gmd:identificationInfo/gmd:MD_DataIdentification/gmd:aggregationInfo/gmd:MD_AggregateInformation[gmd:associationType/gmd:DS_AssociationTypeCode[text()="References"]]/gmd:aggregateDataSetIdentifier/gmd:RS_Identifier[gmd:codeSpace/gco:CharacterString[text()="DOI"]]/gmd:code/gco:CharacterString/text()'),
-
-        'cites':      ('textList', 'gmd:MD_Metadata/gmd:identificationInfo/gmd:MD_DataIdentification/gmd:aggregationInfo/gmd:MD_AggregateInformation[gmd:associationType/gmd:DS_AssociationTypeCode[text()="Cites"]]/gmd:aggregateDataSetIdentifier/gmd:RS_Identifier[gmd:codeSpace/gco:CharacterString[text()="DOI"]]/gmd:code/gco:CharacterString/text()'),
-
-
-        'westBoundLongitude':('textList', 'gmd:MD_Metadata/gmd:identificationInfo/gmd:MD_DataIdentification/gmd:extent/gmd:EX_Extent/gmd:geographicElement/gmd:EX_GeographicBoundingBox/gmd:westBoundLongitude/gco:Decimal/text()'),
-        'eastBoundLongitude':('textList', 'gmd:MD_Metadata/gmd:identificationInfo/gmd:MD_DataIdentification/gmd:extent/gmd:EX_Extent/gmd:geographicElement/gmd:EX_GeographicBoundingBox/gmd:eastBoundLongitude/gco:Decimal/text()'),
-        'southBoundLatitude':('textList', 'gmd:MD_Metadata/gmd:identificationInfo/gmd:MD_DataIdentification/gmd:extent/gmd:EX_Extent/gmd:geographicElement/gmd:EX_GeographicBoundingBox/gmd:southBoundLatitude/gco:Decimal/text()'),
-        'northBoundLatitude':('textList', 'gmd:MD_Metadata/gmd:identificationInfo/gmd:MD_DataIdentification/gmd:extent/gmd:EX_Extent/gmd:geographicElement/gmd:EX_GeographicBoundingBox/gmd:northBoundLatitude/gco:Decimal/text()'),
-
-        'contact':           ('textList', 'gmd:MD_Metadata/gmd:identificationInfo/gmd:MD_DataIdentification/gmd:pointOfContact/gmd:CI_ResponsibleParty[gmd:role/gmd:CI_RoleCode[text()="pointOfContact"]]/gmd:individualName/gco:CharacterString/text()'),
-        
-	'contactString':     ('textList','string(gmd:MD_Metadata/gmd:identificationInfo/gmd:MD_DataIdentification/gmd:pointOfContact)'),
-
-	'publisher':         ('textList', 'gmd:MD_Metadata/gmd:contact/gmd:CI_ResponsibleParty/gmd:contactInfo/gmd:CI_Contact/gmd:onlineResource/gmd:CI_OnlineResource/gmd:linkage/gmd:URL/text()'),
-        'organizations':     ('textList', 'gmd:MD_Metadata/gmd:identificationInfo/gmd:MD_DataIdentification/gmd:citation/gmd:CI_Citation/gmd:citedResponsibleParty/gmd:CI_ResponsibleParty[gmd:role/gmd:CI_RoleCode[text()="originator"]]/gmd:organisationName/gco:CharacterString/text()'), 
-
-        'org_uuidref':      ('textList', 'gmd:MD_Metadata/gmd:identificationInfo/gmd:MD_DataIdentification/gmd:citation/gmd:CI_Citation/gmd:citedResponsibleParty/gmd:CI_ResponsibleParty[gmd:role/gmd:CI_RoleCode[text()="originator"]]/parent::gmd:citedResponsibleParty/@uuidref'),
-
-    }
+    'title':             ('textList', 'gmd:MD_Metadata/gmd:identificationInfo/gmd:MD_DataIdentification/gmd:citation/gmd:CI_Citation/gmd:title/gco:CharacterString/text()'),
+    'description':       ('textList', 'gmd:MD_Metadata/gmd:identificationInfo/gmd:MD_DataIdentification/gmd:abstract/gco:CharacterString/text()'),
+    'creator':           ('textList', 'gmd:MD_Metadata/gmd:identificationInfo/gmd:MD_DataIdentification/gmd:citation/gmd:CI_Citation/gmd:citedResponsibleParty/gmd:CI_ResponsibleParty[gmd:role/gmd:CI_RoleCode[text()="author"]]/gmd:individualName/gco:CharacterString/text()'),
+    'citationContent':           ('textList', 'string(gmd:MD_Metadata/gmd:identificationInfo/gmd:MD_DataIdentification/gmd:citation/gmd:CI_Citation)'),
+    'rights':            ('textList', 'gmd:MD_Metadata/gmd:identificationInfo/gmd:MD_DataIdentification/gmd:resourceConstraints/gmd:MD_Constraints/gmd:useLimitation/gco:CharacterString/text()'),
+    'groups':            ('textList', 'gmd:MD_Metadata/gmd:identificationInfo/gmd:MD_DataIdentification/gmd:descriptiveKeywords/gmd:MD_Keywords/gmd:keyword/gco:CharacterString[text()="rock and melt physical properties" or text()="analogue models of geologic processes" or text()="paleomagnetic and magnetic data" or text()="Geochemical data (elemental and isotope geochemistry)" ]/text()'),
+    'tags':              ('textList', 'gmd:MD_Metadata/gmd:identificationInfo/gmd:MD_DataIdentification/gmd:descriptiveKeywords/gmd:MD_Keywords/gmd:keyword/gco:CharacterString[not(text() ="rock and melt physical properties" or text()="analogue models of geologic processes" or text()="EPOS" or text()="paleomagnetic and magnetic data" or text()="Geochemical data (elemental and isotope geochemistry)")]/text()'),
+    'doi':               ('textList', 'gmd:MD_Metadata/gmd:identificationInfo/gmd:MD_DataIdentification/gmd:citation/gmd:CI_Citation/gmd:identifier/gmd:MD_Identifier/gmd:code/gco:CharacterString/text()'),
+    'created':           ('textList', 'gmd:MD_Metadata/gmd:identificationInfo/gmd:MD_DataIdentification/gmd:citation/gmd:CI_Citation/gmd:date/gmd:CI_Date[gmd:dateType/gmd:CI_DateTypeCode[text()="creation"]]/gmd:date/gco:Date/text()'),
+    'publicationYear':   ('textList', 'gmd:MD_Metadata/gmd:identificationInfo/gmd:MD_DataIdentification/gmd:citation/gmd:CI_Citation/gmd:date/gmd:CI_Date/gmd:date/gco:Date/text()'),
+    'supplementTo':      ('textList', 'gmd:MD_Metadata/gmd:identificationInfo/gmd:MD_DataIdentification/gmd:aggregationInfo/gmd:MD_AggregateInformation[gmd:associationType/gmd:DS_AssociationTypeCode[text()="IsSupplementTo"]]/gmd:aggregateDataSetIdentifier/gmd:RS_Identifier[gmd:codeSpace/gco:CharacterString[text()="DOI"]]/gmd:code/gco:CharacterString/text()'),
+    'references':      ('textList', 'gmd:MD_Metadata/gmd:identificationInfo/gmd:MD_DataIdentification/gmd:aggregationInfo/gmd:MD_AggregateInformation[gmd:associationType/gmd:DS_AssociationTypeCode[text()="References"]]/gmd:aggregateDataSetIdentifier/gmd:RS_Identifier[gmd:codeSpace/gco:CharacterString[text()="DOI"]]/gmd:code/gco:CharacterString/text()'),
+    'cites':      ('textList', 'gmd:MD_Metadata/gmd:identificationInfo/gmd:MD_DataIdentification/gmd:aggregationInfo/gmd:MD_AggregateInformation[gmd:associationType/gmd:DS_AssociationTypeCode[text()="Cites"]]/gmd:aggregateDataSetIdentifier/gmd:RS_Identifier[gmd:codeSpace/gco:CharacterString[text()="DOI"]]/gmd:code/gco:CharacterString/text()'),
+    'westBoundLongitude': ('textList', 'gmd:MD_Metadata/gmd:identificationInfo/gmd:MD_DataIdentification/gmd:extent/gmd:EX_Extent/gmd:geographicElement/gmd:EX_GeographicBoundingBox/gmd:westBoundLongitude/gco:Decimal/text()'),
+    'eastBoundLongitude': ('textList', 'gmd:MD_Metadata/gmd:identificationInfo/gmd:MD_DataIdentification/gmd:extent/gmd:EX_Extent/gmd:geographicElement/gmd:EX_GeographicBoundingBox/gmd:eastBoundLongitude/gco:Decimal/text()'),
+    'southBoundLatitude': ('textList', 'gmd:MD_Metadata/gmd:identificationInfo/gmd:MD_DataIdentification/gmd:extent/gmd:EX_Extent/gmd:geographicElement/gmd:EX_GeographicBoundingBox/gmd:southBoundLatitude/gco:Decimal/text()'),
+    'northBoundLatitude': ('textList', 'gmd:MD_Metadata/gmd:identificationInfo/gmd:MD_DataIdentification/gmd:extent/gmd:EX_Extent/gmd:geographicElement/gmd:EX_GeographicBoundingBox/gmd:northBoundLatitude/gco:Decimal/text()'),
+    'contact':           ('textList', 'gmd:MD_Metadata/gmd:identificationInfo/gmd:MD_DataIdentification/gmd:pointOfContact/gmd:CI_ResponsibleParty[gmd:role/gmd:CI_RoleCode[text()="pointOfContact"]]/gmd:individualName/gco:CharacterString/text()'),
+    'contactString':     ('textList', 'string(gmd:MD_Metadata/gmd:identificationInfo/gmd:MD_DataIdentification/gmd:pointOfContact)'),
+    'publisher':         ('textList', 'gmd:MD_Metadata/gmd:contact/gmd:CI_ResponsibleParty/gmd:contactInfo/gmd:CI_Contact/gmd:onlineResource/gmd:CI_OnlineResource/gmd:linkage/gmd:URL/text()'),
+    'organizations':     ('textList', 'gmd:MD_Metadata/gmd:identificationInfo/gmd:MD_DataIdentification/gmd:citation/gmd:CI_Citation/gmd:citedResponsibleParty/gmd:CI_ResponsibleParty[gmd:role/gmd:CI_RoleCode[text()="originator"]]/gmd:organisationName/gco:CharacterString/text()'),
+    'org_uuidref':      ('textList', 'gmd:MD_Metadata/gmd:identificationInfo/gmd:MD_DataIdentification/gmd:citation/gmd:CI_Citation/gmd:citedResponsibleParty/gmd:CI_ResponsibleParty[gmd:role/gmd:CI_RoleCode[text()="originator"]]/parent::gmd:citedResponsibleParty/@uuidref'),
+}
 
 iso19139_reader = MetadataReader(
-    fields =  iso19139_fields,
+    fields=iso19139_fields,
     namespaces={
-        'gmd': 'http://www.isotc211.org/2005/gmd', 
+        'gmd': 'http://www.isotc211.org/2005/gmd',
         'gco': 'http://www.isotc211.org/2005/gco'
     }
 )
 
 datacite_ilab = MetadataReader(
-    fields =  datacite_ilabfields,
+    fields=datacite_ilabfields,
     namespaces={
         'datacite': 'http://datacite.org/schema/kernel-4',
     }
@@ -216,24 +197,24 @@ xpath_prefix = "//*[name()='metadata']/*[name()='DIF']"
 # TODO: Can add what ever fields are needed
 dif_reader = MetadataReader(
     fields={
-        'title':            ('textList', "//*[name()='Entry_Title']/text()"), # noqa
+        'title':            ('textList', "//*[name()='Entry_Title']/text()"),  # noqa
         #  'title':            ('textList', "OAI-PMH"), # noqa
-        'creator':          ('textList', xpath_prefix + "/*[name()='Data_Set_Citation']/*[name()='Dataset_Creator']/text()"), # noqa
-        'subject':          ('textList', xpath_prefix + "/*[name()='Keyword']/text()"), # noqa
-        'description':      ('textList', xpath_prefix + "/*[name()='Summary']/*[name()='Abstract']/text()"), # noqa
-        'publisher':        ('textList', xpath_prefix + "/*[name()='Data_Set_Citation']/*[name()='Dataset_Publisher']/text()"), # noqa
-        'maintainer_email': ('textList', xpath_prefix + "/*[name()='Personnel']/*[name()='Email']/text()"), # noqa
-        'contributor':      ('textList', xpath_prefix + "/*[name()='Personnel']/*[name()='Last_Name']/text()"), # noqa TODO
-        'date':             ('textList', xpath_prefix + "/*[name()='Data_Set_Citation']/*[name()='Dataset_Release_Date']/text()"), # noqa
+        'creator':          ('textList', xpath_prefix + "/*[name()='Data_Set_Citation']/*[name()='Dataset_Creator']/text()"),  # noqa
+        'subject':          ('textList', xpath_prefix + "/*[name()='Keyword']/text()"),  # noqa
+        'description':      ('textList', xpath_prefix + "/*[name()='Summary']/*[name()='Abstract']/text()"),  # noqa
+        'publisher':        ('textList', xpath_prefix + "/*[name()='Data_Set_Citation']/*[name()='Dataset_Publisher']/text()"),  # noqa
+        'maintainer_email': ('textList', xpath_prefix + "/*[name()='Personnel']/*[name()='Email']/text()"),  # noqa
+        'contributor':      ('textList', xpath_prefix + "/*[name()='Personnel']/*[name()='Last_Name']/text()"),  # noqa TODO
+        'date':             ('textList', xpath_prefix + "/*[name()='Data_Set_Citation']/*[name()='Dataset_Release_Date']/text()"),  # noqa
         #  'type':             ('textList', ""), # noqa TODO
-        'format':           ('textList', xpath_prefix + "/*[name()='Related_URL']/*[name()='URL_Content_Type']/*[name()='Subtype']/text()"), # noqa TODO
+        'format':           ('textList', xpath_prefix + "/*[name()='Related_URL']/*[name()='URL_Content_Type']/*[name()='Subtype']/text()"),  # noqa TODO
         # Identifier is actually resource url...
-        'identifier':       ('textList', xpath_prefix + "/*[name()='Related_URL']/*[name()='URL']/text()"), # noqa TODO
-        'source':           ('textList', xpath_prefix + "/*[name()='Related_URL']/*[name()='URL']/text()"), # noqa
-        'language':         ('textList', xpath_prefix + "/*[name()='Data_Set_Language']/text()"), # noqa
+        'identifier':       ('textList', xpath_prefix + "/*[name()='Related_URL']/*[name()='URL']/text()"),  # noqa TODO
+        'source':           ('textList', xpath_prefix + "/*[name()='Related_URL']/*[name()='URL']/text()"),  # noqa
+        'language':         ('textList', xpath_prefix + "/*[name()='Data_Set_Language']/text()"),  # noqa
         #  'relation':         ('textList', ""), # noqa TODO
-        'coverage':         ('textList', xpath_prefix + "/*[name()='Location']/*[name()='Location_Type']/text()"), # noqa TODO
-        'rights':           ('textList', xpath_prefix + "/*[name()='Access_Constraints']/text()"), # noqa
+        'coverage':         ('textList', xpath_prefix + "/*[name()='Location']/*[name()='Location_Type']/text()"),  # noqa TODO
+        'rights':           ('textList', xpath_prefix + "/*[name()='Access_Constraints']/text()"),  # noqa
     },
     namespaces={
         # TODO: Not used...
