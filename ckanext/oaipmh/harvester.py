@@ -3,7 +3,7 @@ import logging
 import re
 import traceback
 import unicodedata
-import urllib2
+import urllib
 from pprint import pprint
 
 import requests
@@ -83,7 +83,7 @@ class OaipmhHarvester(HarvesterBase):
                 log.debug("HDR in gather stage -harvest_obj.id: %s"
                           % harvest_obj.id)
                 harvest_obj_ids.append(harvest_obj.id)
-        except urllib2.HTTPError as e:
+        except urllib.error.HTTPError as e:
             log.exception(
                 'Gather stage failed on %s (%s): %s, %s'
                 % (
