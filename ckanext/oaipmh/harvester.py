@@ -13,7 +13,7 @@ from ckan.logic import get_action
 from ckan.model import Session
 from ckanext.harvest.harvesters.base import HarvesterBase
 from ckanext.harvest.model import HarvestObject
-from metadata import (datacite_ilab, dif_reader2, iso19139_reader,
+from .metadata import (datacite_ilab, dif_reader2, iso19139_reader,
                       oai_dc_reader, oai_ddi_reader)
 from oaipmh.metadata import MetadataRegistry
 
