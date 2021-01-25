@@ -1,3 +1,9 @@
+# encoding=utf8
+from __future__ import unicode_literals
+import sys
+reload(sys)
+sys.setdefaultencoding('utf8')
+
 import json
 import logging
 import re
@@ -538,6 +544,7 @@ class OaipmhHarvester(HarvesterBase):
             )
         self.package_dict['groups'] = groups
 
+
     def _handleTags(self, content, context):
         if content['mode'] == 'ILAB':
             log.debug('Tags:')
@@ -563,8 +570,10 @@ class OaipmhHarvester(HarvesterBase):
             tags = [s.replace('/', ' ') for s in tags]
             tags = [s.replace(u'\u2019', ' ') for s in tags]
             tags = [s.replace(u'\u2018', ' ') for s in tags]
+            tags = [s.replace("\'", '') for s in tags]
 
             self.package_dict['tags'] = tags
+
 
     def _handleExtras(self, content, context):
         extras = []
@@ -1016,5 +1025,6 @@ class OaipmhHarvester(HarvesterBase):
         return newEntity
 
     def _utf8_and_remove_diacritics(self, input_str):
-        nkfd_form = unicodedata.normalize('NFKD', str(input_str))
+        # nkfd_form = unicodedata.normalize('NFKD', str(input_str))
+        nkfd_form = unicodedata.normalize('NFKD', input_str)
         return (u"".join([c for c in nkfd_form if not unicodedata.combining(c)])).encode('utf-8')
