@@ -253,8 +253,7 @@ class OaipmhHarvester(HarvesterBase):
                     content_dict['metadata_modified'] = metadata_modified
 
                 content = json.dumps(content_dict,
-                                     ensure_ascii=False,
-                                     encoding="utf-8")
+                                     ensure_ascii=False)
             except Exception:
                 log.exception('Dumping the metadata failed!')
                 self._save_object_error(
@@ -1025,4 +1024,4 @@ class OaipmhHarvester(HarvesterBase):
     def _utf8_and_remove_diacritics(self, input_str):
         # nkfd_form = unicodedata.normalize('NFKD', str(input_str))
         nkfd_form = unicodedata.normalize('NFKD', input_str)
-        return (u"".join([c for c in nkfd_form if not unicodedata.combining(c)])).encode('utf-8')
+        return (u"".join([c for c in nkfd_form if not unicodedata.combining(c)]))
