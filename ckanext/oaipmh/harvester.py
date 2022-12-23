@@ -430,7 +430,8 @@ class OaipmhHarvester(HarvesterBase):
             if 'title' in self.package_dict and self.package_dict['title']:
                 self._create_or_update_package(
                     self.package_dict,
-                    harvest_object
+                    harvest_object,
+                    package_dict_form='package_show'
                 )
 
             Session.commit()
@@ -550,7 +551,7 @@ class OaipmhHarvester(HarvesterBase):
             x = [s.replace('(', '') for s in x]
             x = [s.replace(')', '') for s in x]
 
-            self.package_dict['tags'] = x
+            self.package_dict['tags'] = [ { "name" : t } for t in x ]
 
         elif content['mode'] == 'EPOS':
             # TAGS - Hierarchical 'A > B > C > D' to be transformed to separated A, B, C, D
@@ -569,7 +570,7 @@ class OaipmhHarvester(HarvesterBase):
             tags = [s.replace(u'\u2018', ' ') for s in tags]
             tags = [s.replace("\'", '') for s in tags]
 
-            self.package_dict['tags'] = tags
+            self.package_dict['tags'] = [ { "name" : t } for t in tags ]
 
 
     def _handleExtras(self, content, context):
@@ -707,7 +708,7 @@ class OaipmhHarvester(HarvesterBase):
             extras.append(
                 ('Citation', authors + ' (' + pubYear + '): ' + publisher + ' ' + doi))
 
-        self.package_dict['extras'] = extras
+        self.package_dict['extras'] = [ { "key": k, "value": v } for (k, v) in extras ]
 
     # handle data where metadata prefix = iso - to be defined yet
     def _handle_iso(self, content, context):
