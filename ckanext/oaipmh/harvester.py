@@ -378,7 +378,7 @@ class OaipmhHarvester(HarvesterBase):
 
             self._handleUrl(content, context)
 
-            self._handleGroups(content, context)
+            self.package_dict['groups'] = []
 
             self._handleTags(content, context)
 
