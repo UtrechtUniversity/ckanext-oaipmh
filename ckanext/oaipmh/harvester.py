@@ -575,28 +575,33 @@ class OaipmhHarvester(HarvesterBase):
 
     def _handleExtras(self, content, context):
         extras = []
+
+        def _copy_first_from_source_to_extra(content, key, name):
+            if content[key]:
+                extras.append((name, content[key][0]))
+
         if content['mode'] == 'ILAB':
             if content['geolocationPlaces']:
                 extras.append(('Locations covered',
                                ', '.join(content['geolocationPlaces'])))
             # Collection names for facet on dataset level, organization level
-            if content['collection']:
-                extras.append(('Collections',
-                               content['collection'][0]))
+            _copy_first_from_source_to_extra(content, 'collection', 'Collections')
+
+            _copy_first_from_source_to_extra(content, 'created', 'Created at repository')
+            _copy_first_from_source_to_extra(content, 'publicationYear', 'Year of publication')
+            _copy_first_from_source_to_extra(content, 'version', 'Version')
+            _copy_first_from_source_to_extra(content, 'language', 'Language')
+            _copy_first_from_source_to_extra(content, 'publisher', 'Publisher')
+            _copy_first_from_source_to_extra(content, 'collectionPeriod', 'Collection period')
+  
+            if content['funderName']:
+                funder_reference_data = zip(content['funderName'], content['awardNumber'])
+                funder_references = "; ".join({ "{} ({})".format(a,b) for a,b in funder_reference_data })
+                extras.append(("Funder references", funder_references))
+
             if content['contact']:
                 extras.append(('Dataset contact',
                                content['contact'][0] + '-' + content['contactAffiliation'][0]))
-            if content['created']:
-                extras.append(('Created at repository',
-                               content['created'][0]))
-            if content['publicationYear']:
-                extras.append(('Year of publication',
-                               content['publicationYear'][0]))
-            if content['publisher']:
-                extras.append(('Publisher', content['publisher'][0]))
-            if content['collectionPeriod']:
-                extras.append(
-                    ('Collection period', content['collectionPeriod'][0]))
             # Add access type
             # This will work with Yoda MOAI as there we control the order of 'rights'
             # 0: license_id   (see above as well
