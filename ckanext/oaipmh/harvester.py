@@ -15,6 +15,7 @@ from ckan import model
 from ckan.lib.munge import munge_tag, munge_title_to_name
 from ckan.logic import get_action
 from ckan.model import Session
+from ckan.plugins import toolkit
 from ckanext.harvest.harvesters.base import HarvesterBase
 from ckanext.harvest.model import HarvestObject
 from .metadata import (datacite_ilab, dif_reader2, iso19139_reader,
@@ -362,6 +363,8 @@ class OaipmhHarvester(HarvesterBase):
                 content['mode'] = 'EPOS'
 
             # BUILD DATA PACKAGE INCLUDING ALL DEPENDANT DATA (GROUPS ETC)
+            self._handleVocabularies(content, context)
+
             self._handleMaintainer(content, context)
 
             self._handleTitle(content, context)
@@ -378,9 +381,9 @@ class OaipmhHarvester(HarvesterBase):
 
             self._handleUrl(content, context)
 
-            self.package_dict['groups'] = []
+            self._handleKeywords(content, context)
 
-            self._handleTags(content, context)
+            self._handleDisciplines(content, context)
 
             self._handleExtras(content, context)
 
@@ -443,6 +446,22 @@ class OaipmhHarvester(HarvesterBase):
             )
             return False
         return True
+
+    def _get_vocabulary_id(self, context, name):
+        vocabularies = toolkit.get_action("vocabulary_list")(context, {})
+        matches = [ v for v in vocabularies if v["name"] == name ]
+        return matches[0]['id'] if len(matches) == 1 else None
+
+
+    def _handleVocabularies(self, content, context):
+        vocabularies = toolkit.get_action("vocabulary_list")(context, {})
+        if self._get_vocabulary_id(context, "discipline") is None:
+            toolkit.get_action("vocabulary_create")(context,
+                { "name": "discipline" })
+        if self._get_vocabulary_id(context, "keyword") is None:
+            toolkit.get_action("vocabulary_create")(context,
+                { "name": "keyword" })
+
 
     def _handleMaintainer(self, content, context):
         if content['mode'] == 'ILAB':
@@ -531,7 +550,17 @@ class OaipmhHarvester(HarvesterBase):
         if content['doi']:
             self.package_dict['url'] = 'http://doi.org/' + content['doi'][0]
 
-    def _handleGroups(self, content, context):
+
+    def _sanitize_tag_name(self, inp):
+        """Removes or replaces characters that can't be part of a tag name."""
+        result = inp
+        unsupported_punctuation = '''~`!@#$%^&*()+=\|,<>?/'"\u2018\u2019'''
+        for char in unsupported_punctuation:
+            result = result.replace(char, '_')
+        return result
+
+
+    def _handleKeywords(self, content, context):
         groups = []
         if content['groups']:
             log.debug('subjects: %s' % content['groups'])
@@ -540,18 +569,46 @@ class OaipmhHarvester(HarvesterBase):
                                             content['groups'],
                                             context)
             )
-        self.package_dict['groups'] = groups
+
+            # Keywords are imported as tags in vocabulary "keyword"
+            vocabulary_id = self._get_vocabulary_id(context, "keyword")
+            if vocabulary_id is None:
+                raise Exception("Unable to get vocabulary ID for keywords.")
+
+            new_tags = []
+            for group in content["groups"]:
+                new_tags.append( { "name": self._sanitize_tag_name(group),
+                                   "display_name": group,
+                                   "vocabulary_id": vocabulary_id } )
+
+            if "tags" in self.package_dict:
+                self.package_dict['tags'] = { **self.package_dict['tags'], **new_tags }
+            else:
+                self.package_dict['tags'] = new_tags
 
 
-    def _handleTags(self, content, context):
+
+    def _handleDisciplines(self, content, context):
         if content['mode'] == 'ILAB':
             log.debug('Tags:')
             log.debug(content['tags'])
-            x = content['tags']
-            x = [s.replace('(', '') for s in x]
-            x = [s.replace(')', '') for s in x]
 
-            self.package_dict['tags'] = [ { "name" : t } for t in x ]
+            # Disciplines are imported as tags in vocabulary "discipline"
+            vocabulary_id = self._get_vocabulary_id(context, "discipline")
+            if vocabulary_id is None:
+                raise Exception("Unable to get vocabulary ID for disciplines.")
+
+            new_tags = []
+            for tag in content["tags"]:
+                new_tags.append( { "name" : self._sanitize_tag_name(tag),
+                                   "display_name": tag,
+                                   "vocabulary_id": vocabulary_id } )
+
+            if "tags" in self.package_dict:
+                self.package_dict['tags'] = [ *self.package_dict['tags'], *new_tags ]
+            else:
+                self.package_dict['tags'] = new_tags
+
 
         elif content['mode'] == 'EPOS':
             # TAGS - Hierarchical 'A > B > C > D' to be transformed to separated A, B, C, D
