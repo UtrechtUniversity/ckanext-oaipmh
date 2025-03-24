@@ -1,5 +1,7 @@
 # CKAN Harvester for OAI-PMH
 
+**This repository has been archived. It is no longer maintained.**
+
 ## Instructions
 
 ### Installation
