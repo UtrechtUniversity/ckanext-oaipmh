@@ -2,7 +2,7 @@ import logging
 
 from oaipmh import common
 from lxml import etree
-
+import xmltodict
 
 log = logging.getLogger(__name__)
 
@@ -13,6 +13,13 @@ class Error(Exception):
 
 class MetadataReader(object):
     """A default implementation of a reader based on fields.
+
+       The outout is a dict containing a subset of the received XML data.
+
+       In case of "ckan_importer" the dict will hold ALL data from ['metadata']['resource'] down.
+       (Namespaces are nullified)
+
+       iiIn all other cases the dict will hold a selection as defined by the fields/xpath descriptions
     """
 
     def __init__(self, fields, namespaces=None):
@@ -22,8 +29,20 @@ class MetadataReader(object):
     # TODO: Debug the paths for DIF
     def __call__(self, element):
         map = {}
-        # create XPathEvaluator for this element
+        
+        # Interrupt normal flow when ckan_importer is used. Return (almost) the entire data within the XML formatted conform xmltodict
+        if "ckan_importer" in self._fields:
+            s_xml = etree.tostring(element, encoding='utf-8')
+            s_xml = s_xml.decode("utf-8")
+            
+            # map will contain full dict with all xml data. namespaces are taken out.
+            map = xmltodict.parse(s_xml, process_namespaces=True, namespaces={'http://datacite.org/schema/kernel-4': None, 'http://www.openarchives.org/OAI/2.0/': None})
 
+            # In essence return all data starting from the leven ['metadata']['resource']
+            return common.Metadata(element, map['metadata']['resource'])
+
+        # normal (i.e. original) xpath handling 
+        # create XPathEvaluator for this element
         xpath_evaluator = etree.XPathEvaluator(element,
                                                namespaces=self._namespaces)
 
@@ -49,97 +68,12 @@ class MetadataReader(object):
         return common.Metadata(element, map)
 
 
-# general fields for datacite as used by different readers
-datacite_ilabfields = {
-         'title':             ('textList', 'datacite:resource/datacite:titles/datacite:title/text()'),  # noqa
-         'description':       ('textList', 'datacite:resource/datacite:descriptions/datacite:description/text()'),
-         'creator':           ('textList', 'datacite:resource/datacite:creators/datacite:creator/datacite:creatorName/text()'),  # noqa
-         'rights':            ('textList', 'datacite:resource/datacite:rightsList/datacite:rights/text()'),  # noqa
-         'groups':            ('textList', 'datacite:resource/datacite:subjects/datacite:subject[@subjectScheme="Keyword"]/text()'),
-         'tags':              ('textList', 'datacite:resource/datacite:subjects/datacite:subject[@subjectScheme="OECD FOS 2007"]/text()'),
-         'collection':        ('textList', 'datacite:resource/datacite:subjects/datacite:subject[@subjectScheme="collection"]/text()'),
-         'doi':               ('textList', 'datacite:resource/datacite:identifier[@identifierType="DOI"]/text()'),
-         'created':           ('textList', 'datacite:resource/datacite:dates/datacite:date[@dateType="Created"]/text()'),
-         'collectionPeriod':  ('textList', 'datacite:resource/datacite:dates/datacite:date[@dateType="Collected"]/text()'),
-         'publicationYear':   ('textList', 'datacite:resource/datacite:publicationYear/text()'),
-#        'supplementTo':      ('textList', 'default:resource/default:relatedIdentifiers/default:relatedIdentifier[@relatedIdentifierType="DOI" and @relationType="IsSupplementTo"]/text()'),
-#        'cites':             ('textList', 'default:resource/default:relatedIdentifiers/default:relatedIdentifier[@relatedIdentifierType="DOI" and @relationType="Cites"]/text()'),
-#        'references':        ('textList', 'default:resource/default:relatedIdentifiers/default:relatedIdentifier[@relatedIdentifierType="DOI" and @relationType="References"]/text()'),
-#        'westBoundLongitude':('textList', 'default:resource/default:geoLocations/default:geoLocation/default:geoLocationBox/default:westBoundLongitude/text()'),
-#        'eastBoundLongitude':('textList', 'default:resource/default:geoLocations/default:geoLocation/default:geoLocationBox/default:westBoundLongitude/text()'),
-#        'southBoundLatitude':('textList', 'default:resource/default:geoLocations/default:geoLocation/default:geoLocationBox/default:southBoundLatitude/text()'),
-#        'northBoundLatitude':('textList', 'default:resource/default:geoLocations/default:geoLocation/default:geoLocationBox/default:northBoundLatitude/text()'),
-         'contact':           ('textList', 'datacite:resource/datacite:contributors/datacite:contributor[@contributorType="ContactPerson"]/datacite:contributorName/text()'),
-#        'contactAffiliation':('textList', 'default:resource/default:contributors/default:contributor[@contributorType="ContactPerson"]/default:affiliation/text()'),
-        'contactEmail':      ('textList', 'datacite:resource/datacite:titles/datacite:title/text()'),
-        'publisher':         ('textList', 'datacite:resource/datacite:publisher/text()'),
-        'organizations':     ('textList', 'datacite:resource/datacite:contributors/datacite:contributor[@contributorType="HostingInstitution"]/datacite:contributorName/text()'),
-        'orgAffiliations':    ('textList', 'datacite:resource/datacite:contributors/datacite:contributor[@contributorType="HostingInstitution"]/datacite:affiliation/text()'),
-        'geolocationPlaces':  ('textList', 'datacite:resource/datacite:geoLocations/datacite:geoLocation/datacite:geoLocationPlace/text()'),
-    }
-
-datacite_fields = {
-        'title':             ('textList', 'default:resource/default:titles/default:title/text()'),  # noqa
-        'description':       ('textList', 'default:resource/default:descriptions/default:description/text()'),  # noqa
-        'creator':           ('textList', 'default:resource/default:creators/default:creator/default:creatorName/text()'),  # noqa
-        'rights':            ('textList', 'default:resource/default:rightsList/default:rights/text()'),  # noqa
-        'groups':            ('textList', 'default:resource/default:subjects/default:subject[text()="rock and melt physical properties" or text()="analogue models of geologic processes"]/text()'),
-        'tags':              ('textList', 'default:resource/default:subjects/default:subject[not(text()="rock and melt physical properties") and not(text()="analogue models of geologic processes")]/text()'),
-        'doi':               ('textList', 'default:resource/default:identifier[@identifierType="DOI"]/text()'),
-        'created':           ('textList', 'default:resource/default:dates/default:date[@dateType="Created"]/text()'),
-        'publicationYear':   ('textList', 'default:resource/default:publicationYear/text()'),
-        'supplementTo':      ('textList', 'default:resource/default:relatedIdentifiers/default:relatedIdentifier[@relatedIdentifierType="DOI" and @relationType="IsSupplementTo"]/text()'),
-        'cites':             ('textList', 'default:resource/default:relatedIdentifiers/default:relatedIdentifier[@relatedIdentifierType="DOI" and @relationType="Cites"]/text()'),
-        'references':        ('textList', 'default:resource/default:relatedIdentifiers/default:relatedIdentifier[@relatedIdentifierType="DOI" and @relationType="References"]/text()'),
-        'westBoundLongitude': ('textList', 'default:resource/default:geoLocations/default:geoLocation/default:geoLocationBox/default:westBoundLongitude/text()'),
-        'eastBoundLongitude': ('textList', 'default:resource/default:geoLocations/default:geoLocation/default:geoLocationBox/default:westBoundLongitude/text()'),
-        'southBoundLatitude': ('textList', 'default:resource/default:geoLocations/default:geoLocation/default:geoLocationBox/default:southBoundLatitude/text()'),
-        'northBoundLatitude': ('textList', 'default:resource/default:geoLocations/default:geoLocation/default:geoLocationBox/default:northBoundLatitude/text()'),
-        'contact':           ('textList', 'default:resource/default:contributors/default:contributor[@contributorType="ContactPerson"]/default:contributorName/text()'),
-        'contactAffiliation': ('textList', 'default:resource/default:contributors/default:contributor[@contributorType="ContactPerson"]/default:affiliation/text()'),
-        'contactEmail':      ('textList', 'default:resource/default:titles/default:title/text()'),
-        'publisher':         ('textList', 'default:resource/default:publisher/text()'),
-        'organizations':     ('textList', 'default:resource/default:contributors/default:contributor[@contributorType="HostingInstitution"]/default:contributorName/text()'),
-        'orgAffiliations':    ('textList', 'default:resource/default:contributors/default:contributor[@contributorType="HostingInstitution"]/default:affiliation/text()')
-    }
-
-iso19139_fields = {
-    'title':             ('textList', 'gmd:MD_Metadata/gmd:identificationInfo/gmd:MD_DataIdentification/gmd:citation/gmd:CI_Citation/gmd:title/gco:CharacterString/text()'),
-    'description':       ('textList', 'gmd:MD_Metadata/gmd:identificationInfo/gmd:MD_DataIdentification/gmd:abstract/gco:CharacterString/text()'),
-    'creator':           ('textList', 'gmd:MD_Metadata/gmd:identificationInfo/gmd:MD_DataIdentification/gmd:citation/gmd:CI_Citation/gmd:citedResponsibleParty/gmd:CI_ResponsibleParty[gmd:role/gmd:CI_RoleCode[text()="author"]]/gmd:individualName/gco:CharacterString/text()'),
-    'citationContent':           ('textList', 'string(gmd:MD_Metadata/gmd:identificationInfo/gmd:MD_DataIdentification/gmd:citation/gmd:CI_Citation)'),
-    'rights':            ('textList', 'gmd:MD_Metadata/gmd:identificationInfo/gmd:MD_DataIdentification/gmd:resourceConstraints/gmd:MD_Constraints/gmd:useLimitation/gco:CharacterString/text()'),
-    'groups':            ('textList', 'gmd:MD_Metadata/gmd:identificationInfo/gmd:MD_DataIdentification/gmd:descriptiveKeywords/gmd:MD_Keywords/gmd:keyword/gco:CharacterString[text()="rock and melt physical properties" or text()="analogue models of geologic processes" or text()="paleomagnetic and magnetic data" or text()="Geochemical data (elemental and isotope geochemistry)" ]/text()'),
-    'tags':              ('textList', 'gmd:MD_Metadata/gmd:identificationInfo/gmd:MD_DataIdentification/gmd:descriptiveKeywords/gmd:MD_Keywords/gmd:keyword/gco:CharacterString[not(text() ="rock and melt physical properties" or text()="analogue models of geologic processes" or text()="EPOS" or text()="paleomagnetic and magnetic data" or text()="Geochemical data (elemental and isotope geochemistry)")]/text()'),
-    'doi':               ('textList', 'gmd:MD_Metadata/gmd:identificationInfo/gmd:MD_DataIdentification/gmd:citation/gmd:CI_Citation/gmd:identifier/gmd:MD_Identifier/gmd:code/gco:CharacterString/text()'),
-    'created':           ('textList', 'gmd:MD_Metadata/gmd:identificationInfo/gmd:MD_DataIdentification/gmd:citation/gmd:CI_Citation/gmd:date/gmd:CI_Date[gmd:dateType/gmd:CI_DateTypeCode[text()="creation"]]/gmd:date/gco:Date/text()'),
-    'publicationYear':   ('textList', 'gmd:MD_Metadata/gmd:identificationInfo/gmd:MD_DataIdentification/gmd:citation/gmd:CI_Citation/gmd:date/gmd:CI_Date/gmd:date/gco:Date/text()'),
-    'supplementTo':      ('textList', 'gmd:MD_Metadata/gmd:identificationInfo/gmd:MD_DataIdentification/gmd:aggregationInfo/gmd:MD_AggregateInformation[gmd:associationType/gmd:DS_AssociationTypeCode[text()="IsSupplementTo"]]/gmd:aggregateDataSetIdentifier/gmd:RS_Identifier[gmd:codeSpace/gco:CharacterString[text()="DOI"]]/gmd:code/gco:CharacterString/text()'),
-    'references':      ('textList', 'gmd:MD_Metadata/gmd:identificationInfo/gmd:MD_DataIdentification/gmd:aggregationInfo/gmd:MD_AggregateInformation[gmd:associationType/gmd:DS_AssociationTypeCode[text()="References"]]/gmd:aggregateDataSetIdentifier/gmd:RS_Identifier[gmd:codeSpace/gco:CharacterString[text()="DOI"]]/gmd:code/gco:CharacterString/text()'),
-    'cites':      ('textList', 'gmd:MD_Metadata/gmd:identificationInfo/gmd:MD_DataIdentification/gmd:aggregationInfo/gmd:MD_AggregateInformation[gmd:associationType/gmd:DS_AssociationTypeCode[text()="Cites"]]/gmd:aggregateDataSetIdentifier/gmd:RS_Identifier[gmd:codeSpace/gco:CharacterString[text()="DOI"]]/gmd:code/gco:CharacterString/text()'),
-    'westBoundLongitude': ('textList', 'gmd:MD_Metadata/gmd:identificationInfo/gmd:MD_DataIdentification/gmd:extent/gmd:EX_Extent/gmd:geographicElement/gmd:EX_GeographicBoundingBox/gmd:westBoundLongitude/gco:Decimal/text()'),
-    'eastBoundLongitude': ('textList', 'gmd:MD_Metadata/gmd:identificationInfo/gmd:MD_DataIdentification/gmd:extent/gmd:EX_Extent/gmd:geographicElement/gmd:EX_GeographicBoundingBox/gmd:eastBoundLongitude/gco:Decimal/text()'),
-    'southBoundLatitude': ('textList', 'gmd:MD_Metadata/gmd:identificationInfo/gmd:MD_DataIdentification/gmd:extent/gmd:EX_Extent/gmd:geographicElement/gmd:EX_GeographicBoundingBox/gmd:southBoundLatitude/gco:Decimal/text()'),
-    'northBoundLatitude': ('textList', 'gmd:MD_Metadata/gmd:identificationInfo/gmd:MD_DataIdentification/gmd:extent/gmd:EX_Extent/gmd:geographicElement/gmd:EX_GeographicBoundingBox/gmd:northBoundLatitude/gco:Decimal/text()'),
-    'contact':           ('textList', 'gmd:MD_Metadata/gmd:identificationInfo/gmd:MD_DataIdentification/gmd:pointOfContact/gmd:CI_ResponsibleParty[gmd:role/gmd:CI_RoleCode[text()="pointOfContact"]]/gmd:individualName/gco:CharacterString/text()'),
-    'contactString':     ('textList', 'string(gmd:MD_Metadata/gmd:identificationInfo/gmd:MD_DataIdentification/gmd:pointOfContact)'),
-    'publisher':         ('textList', 'gmd:MD_Metadata/gmd:contact/gmd:CI_ResponsibleParty/gmd:contactInfo/gmd:CI_Contact/gmd:onlineResource/gmd:CI_OnlineResource/gmd:linkage/gmd:URL/text()'),
-    'organizations':     ('textList', 'gmd:MD_Metadata/gmd:identificationInfo/gmd:MD_DataIdentification/gmd:citation/gmd:CI_Citation/gmd:citedResponsibleParty/gmd:CI_ResponsibleParty[gmd:role/gmd:CI_RoleCode[text()="originator"]]/gmd:organisationName/gco:CharacterString/text()'),
-    'org_uuidref':      ('textList', 'gmd:MD_Metadata/gmd:identificationInfo/gmd:MD_DataIdentification/gmd:citation/gmd:CI_Citation/gmd:citedResponsibleParty/gmd:CI_ResponsibleParty[gmd:role/gmd:CI_RoleCode[text()="originator"]]/parent::gmd:citedResponsibleParty/@uuidref'),
-}
-
-iso19139_reader = MetadataReader(
-    fields=iso19139_fields,
-    namespaces={
-        'gmd': 'http://www.isotc211.org/2005/gmd',
-        'gco': 'http://www.isotc211.org/2005/gco'
-    }
-)
-
-datacite_ilab = MetadataReader(
-    fields=datacite_ilabfields,
+# Reader for configurable imports in a user defined JSON file
+datacite_ckan_importer = MetadataReader(
+    fields={"ckan_importer": "YES"},
     namespaces={
         'datacite': 'http://datacite.org/schema/kernel-4',
+        "oai_datacite": "http://datacite.org/schema/kernel-4"
     }
 )
 

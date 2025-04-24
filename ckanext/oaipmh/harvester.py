@@ -17,8 +17,8 @@ from ckan.logic import get_action
 from ckan.model import Session
 from ckanext.harvest.harvesters.base import HarvesterBase
 from ckanext.harvest.model import HarvestObject
-from .metadata import (datacite_ilab, dif_reader2, iso19139_reader,
-                      oai_dc_reader, oai_ddi_reader)
+from .metadata import (datacite_ckan_importer, 
+                       oai_dc_reader, oai_ddi_reader, dif_reader2)
 from oaipmh.metadata import MetadataRegistry
 
 log = logging.getLogger(__name__)
@@ -76,6 +76,7 @@ class OaipmhHarvester(HarvesterBase):
             log.debug('URL: ' + harvest_job.source.url)
 
             client.identify()  # check if identify works
+            counter = 1
             for header in self._identifier_generator(client):
                 harvest_obj = HarvestObject(
                     guid=header.identifier(),
@@ -85,6 +86,11 @@ class OaipmhHarvester(HarvesterBase):
                 log.debug("HDR in gather stage -harvest_obj.id: %s"
                           % harvest_obj.id)
                 harvest_obj_ids.append(harvest_obj.id)
+                
+                counter += 1
+                if counter > 1:
+                    break                
+                
         except urllib.error.HTTPError as e:
             log.exception(
                 'Gather stage failed on %s (%s): %s, %s'
@@ -133,12 +139,11 @@ class OaipmhHarvester(HarvesterBase):
     def _create_metadata_registry(self):
         registry = MetadataRegistry()
 
-        if self.md_format == 'iso19139' and self.md_application == 'EPOS':
-            registry.registerReader(self.md_format, iso19139_reader)
-            log.debug('Format -> iso19139')
-        elif self.md_format == 'datacite' and self.md_application == 'ILAB':
-            registry.registerReader(self.md_format, datacite_ilab)
-            log.debug('->datacite ILAB reader')
+        # md_application is added as a configurational item from the harvest source (as manually added by ...)
+        if self.md_application == 'ckan_importer':
+            self.md_format = 'datacite'
+            registry.registerReader(self.md_format, datacite_ckan_importer)
+            log.debug('ckan_importer Format=datacite')
         else:
             registry.registerReader('oai_dc', oai_dc_reader)
             registry.registerReader('oai_ddi', oai_ddi_reader)
@@ -164,9 +169,13 @@ class OaipmhHarvester(HarvesterBase):
             self.user = 'harvest'
             self.set_spec = config_json.get('set', None)
             self.md_format = config_json.get('metadata_prefix', 'datacite')
-            # Differentiation for the metadata handling methods.
-            # In essence now there are only two tastes: ILAB and EPOS (which is default).
-            self.md_application = config_json.get('application', 'EPOS')
+
+            # Possibility to differentiation for the metadata handling methods.
+            # This is dealt with through the configuration field in a ckan harvest source
+            # that can be manually added by a ckan-maintainer.
+
+            # md_application defaults to 'ckan_importer' requiring a json file with the configuration
+            self.md_application = config_json.get('application', 'ckan_importer')
 
             # Additional info adds possibities to differentiate - this is in essence only for EPOS
             # within a metadata_prefix.
@@ -209,10 +218,6 @@ class OaipmhHarvester(HarvesterBase):
             log.debug('Md_format: ' + self.md_format)
             log.debug('AddInfo: ' + self.additional_info)
 
-            # EPOS - trick to collect extra info via GFZ - solely intended for harvesting of GFZ
-            log.debug('Extra citation info URL: ' +
-                      self.collect_extra_info_from_gfz)
-
             registry = self._create_metadata_registry()
             client = oaipmh.client.Client(
                 harvest_object.job.source.url,
@@ -247,7 +252,6 @@ class OaipmhHarvester(HarvesterBase):
             try:
                 content_dict = metadata.getMap()
 
-                # HDR? required still?
                 content_dict['set_spec'] = header.setSpec()
                 if metadata_modified:
                     content_dict['metadata_modified'] = metadata_modified
@@ -314,7 +318,7 @@ class OaipmhHarvester(HarvesterBase):
                 'ignore_auth': True  # TODO: Remove, just to test
             }
 
-            # Main dictonary holding all package data.
+            # Main dictonary holding all package data to be sent to CKAN.
             self.package_dict = {}
 
             content = json.loads(harvest_object.content)
@@ -353,78 +357,73 @@ class OaipmhHarvester(HarvesterBase):
             log.info('Maintainer: ' + content['maintainer'])
             log.info('Maintainer: ' + content['maintainer_email'])
 
+            # This is part of CKAN itself - should not be dealt with within the configuration file when in ckan_importer mode!!
+            # !!?? maybe move it to the end down below
             self.package_dict['id'] = munge_title_to_name(harvest_object.guid)
             self.package_dict['name'] = self.package_dict['id']
 
-            if self.md_format == 'datacite' and self.md_application == 'ILAB':
-                content['mode'] = 'ILAB'
-            elif self.md_format == 'iso19139' and self.md_application == 'EPOS':
-                content['mode'] = 'EPOS'
+            # Differentiate handling according to md_application in configuration of harvest_source
+            if self.md_application == 'ckan_importer':
+                # Get the configuration settings for the metadata.
+                # ckan_uu_json_file = '/srv/app/src_extensions/ckanext-oaipmh/ckanext/oaipmh/ckan_uu_config_file.json'
+                ckan_uu_json_file = '/srv/app/src_extensions/ckanext-oaipmh/ckanext/oaipmh/ckan_importer_config_file.json'
+                ckan_uu_config = {}
+                with open(ckan_uu_json_file) as f:
+                    ckan_uu_config = json.load(f)
+                    log.info('ckan_uu_config: %s' % (ckan_uu_config))
 
-            # BUILD DATA PACKAGE INCLUDING ALL DEPENDANT DATA (GROUPS ETC)
-            self._handleMaintainer(content, context)
+                # for k,v in ckan_uu_config.items():
+                #    log.info(k)
 
-            self._handleTitle(content, context)
+                # Merge package_dict with newly created data dict.
+                # Possibly maintainer / maintainer_email is overwritten
+                data_transformed_dict = self._handle_import_configuration(ckan_uu_config, content, context)
+                self.package_dict.update(data_transformed_dict)
+            # elif self.md_format == 'datacite' and self.md_application == 'ILAB':
+            #    content['mode'] = 'ILAB'
+            #elif self.md_format == 'iso19139' and self.md_application == 'EPOS':
+            #     content['mode'] = 'EPOS'
 
-            self._handleNotes(content, context)
+            log.info('----------------- RESULT --------------')
+            log.info(self.package_dict['maintainer'])
+            log.info(self.package_dict['maintainer_email'])
+            log.info(self.package_dict['title'])
+            log.info(self.package_dict['notes'])
+            log.info(self.package_dict['license_id'])
+            log.info(self.package_dict['author'])
+            log.info(self.package_dict['url'])
 
-            self._handleLicense(content, context)
+            self.package_dict['owner_org'] = content['owner_org']
+            log.info(self.package_dict['owner_org'])
+            
+            log.info('-------- END TRANSFORMATION')
+            
 
-            self._handleAuthor(content, context)
+            if False:  # content['mode'] == 'ILAB' or content['mode'] == 'EPOS':
+                # BUILD DATA PACKAGE INCLUDING ALL DEPENDANT DATA (GROUPS ETC)
+                self._handleMaintainer(content, context)
 
-            self._handleOwner(content, context)
+                self._handleTitle(content, context)
 
-            self._handleFormats(content, context)
+                self._handleNotes(content, context)
 
-            self._handleUrl(content, context)
+                self._handleLicense(content, context)
 
-            self.package_dict['groups'] = []
+                self._handleAuthor(content, context)
 
-            self._handleTags(content, context)
+                self._handleOwner(content, context)
 
-            self._handleExtras(content, context)
+                self._handleFormats(content, context)
 
-            # Differentiate further package creation
-            # dependent on metadataPrefix.
+                self._handleUrl(content, context)
 
-            '''
-            if self.md_format == 'datacite' and self.md_application == 'ILAB':
-                self._handle_dataciteILAB(content, context)
-            elif self.md_format == 'iso19139' and self.md_application == 'EPOS':
-                self._handle_ISO19139EPOS(content, context)
-            elif (self.md_format == 'dif' or
-                  self.md_format == 'oai_dc' or
-                  self.md_format == 'oai_ddi'):
-                self._handle_nonEpos(content, context,harvest_object)
+                self.package_dict['groups'] = []
 
-                # Add fields according to mapping
-                mapping = self._get_mapping()  # mapping used only for exotic formats, no longer for datacite and iso
+                self._handleTags(content, context)
 
-                for ckan_field, oai_field in mapping.iteritems():
-                   try:
-                       if (ckan_field == 'maintainer_email' and
-                           '@' not in content[oai_field][0]):
-                           # Email not available.
-                           # Do not set email field as it will break validation.
-                           continue
-                       else:
-                           self.package_dict[ckan_field] = content[oai_field][0]
+                self._handleExtras(content, context)
 
-                except (IndexError, KeyError):
-                    continue
 
-            log.debug('after mapping execution')
-            '''
-
-            '''
-            When using Datacite 3 / 4 this delivers an object queue
-            disregarding the namespace. The consequence is that,
-            when actually harvesting, not all information is fetched.
-            When datacite3 is used->datacite4 records will be empty and
-            vice versa. Consequence is that empty records were written
-            (added/updated) where this was not valid. By simply checking
-            the presence of 'title' should solve this.
-            '''
             # log.debug('Create/update package using dict: %s'
             #          % self.package_dict)
             if 'title' in self.package_dict and self.package_dict['title']:
@@ -444,6 +443,179 @@ class OaipmhHarvester(HarvesterBase):
             return False
         return True
 
+    def _handle_import_configuration(self, ckan_uu_config, data, context):
+        """
+          Step through all data configurations and build a dict that CKAN can handle.
+          The keys MUST correspond to the names in CKAN data schema
+
+        """
+        # Holds the resulting data for CKAN
+        ckan_package_dict = {}
+
+        # ckan_base_key: the key that should correspond with the highest level in ckan - schema
+        for ckan_base_key, v in ckan_uu_config.items():
+            try:
+                # Get the select_base as defined in the configuration
+                conf_select_base = ckan_uu_config[ckan_base_key]['select_base']
+
+                # typeL FIXED handling: allows for hardcoded values assigned to
+                if ckan_uu_config[ckan_base_key]['type'] == 'fixed':
+                    # Assign the value to the key
+                    ckan_package_dict[ckan_base_key] = conf_select_base
+
+                # type: SINGLE handling
+                elif ckan_uu_config[ckan_base_key]['type'] == 'single':
+                    prefix = ''
+                    if 'prefix' in ckan_uu_config[ckan_base_key]:
+                        prefix = ckan_uu_config[ckan_base_key]['prefix']
+
+                    data_parts = conf_select_base.split('>')
+                    if len(data_parts) > 1:
+                        # DIt is een nog onuitgewerkte case - ff laten staan zo
+                        found_val = None
+                        if isinstance(data[data_parts[0]][data_parts[1]], list):
+                            # Look at the first data item in the list!
+                            # this can be a dict or a string
+                            if isinstance(data[data_parts[0]][data_parts[1]][0], dict):
+                                if len(data_parts)>2:
+                                    found_val = data[data_parts[0]][data_parts[1]][0][data_parts[2]]
+                                else:
+                                    found_val = data[data_parts[0]][data_parts[1]][0]['#text']
+                            elif isinstance(data[data_parts[0]][data_parts[1]][0], str):
+                                found_val = data[data_parts[0]][data_parts[1]][0]
+                        else:
+                            if isinstance(data[data_parts[0]][data_parts[1]], dict):
+                                if len(data_parts)>2:
+                                    found_val = data[data_parts[0]][data_parts[1]][data_parts[2]]
+                                else:
+                                    found_val = data[data_parts[0]][data_parts[1]]['#text']
+                            elif isinstance(data[data_parts[0]][data_parts[1]], str):
+                                found_val = data[data_parts[0]][data_parts[1]]
+
+                        if found_val is not None:
+                            ckan_package_dict[ckan_base_key] = found_val
+
+                    else:
+                        # Get the relevant data
+                        select_base_data = data[conf_select_base]
+
+                        # Will hold the actual definition of a set - if present
+                        set_definition = {}
+
+                        # Will hold the data corresponding to the
+                        set_data = {}
+
+                        # Check whether a set_definition exists
+                        if 'set_definition' in ckan_uu_config[ckan_base_key]:
+                            set_definition = ckan_uu_config[ckan_base_key]['set_definition']
+
+                        if isinstance(select_base_data, dict):
+                            # ckan_package_dict[ckan_base_key] = the_data['#text'] + "->#text"
+                            # If a set definition exists => step through all definitions and assign the correct value in set_data-dict
+                            if set_definition:
+                                for set_key, set_value in set_definition.items():
+                                    set_data[set_key] = select_base_data[set_value]
+                                # Add it to the central dict
+                                ckan_package_dict[ckan_base_key] = set_data
+                            else:
+                                # As it is a dict, the main text can only be found with '#text' as a key.
+                                ckan_package_dict[ckan_base_key] = prefix + select_base_data['#text']
+                        elif isinstance(select_base_data, str):
+                            ckan_package_dict[ckan_base_key] = prefix + data[conf_select_base]
+
+                # type: ARRAY handling
+                elif ckan_uu_config[ckan_base_key]['type'] == 'array':
+                    data_parts = conf_select_base.split('>')
+                    # At this moment we know no further depth will be required than 2 deep.
+                    if len(data_parts) > 1:
+                        select_base_data = data[data_parts[0]][data_parts[1]]
+                    else:
+                        select_base_data = data[data_parts[0]]
+
+                    # Force select_base_data to be a list
+                    if not isinstance(select_base_data, (list)):
+                        select_base_data = [select_base_data]
+
+                    if 'set_definition' in ckan_uu_config[ckan_base_key]:
+                        set_definition = ckan_uu_config[ckan_base_key]['set_definition']
+
+                        # Will hold the entire resulting list
+                        the_entire_list = []
+
+                        # Step through each data dict
+                        for select_base_data_dict in select_base_data:
+                            set_data = {}
+                            # print(select_base_data_dict)
+                            if set_definition:
+                                # build a list of dicts using the set_definition
+                                for set_key, set_value in set_definition.items():
+                                    # set_data[set_key] = select_base_data_dict[set_value]
+
+                                    # It is possible that even more levels are taken into account.
+                                    if set_value.startswith(tuple(['#', '@'])):
+                                        # direct assignment
+                                        set_data[set_key] = select_base_data_dict[set_value]
+                                    else:
+                                        # check presence of # or @ as this indicates a deeper level to be taken into account
+                                        set_value_parts = set_value.split('#')
+                                        if len(set_value_parts) == 2:
+                                            # set_value_parts[0] possibly holds a filter. Like relatedIdentifier[scheme=ORCID]
+                                            # Only the first part is of interest as a key.
+                                            # The filter is one step later.
+                                            subset_parts = set_value_parts[0].split('[')
+                                            filter_key = ''
+                                            filter_value = ''
+                                            if len(subset_parts) == 1:
+                                                dict_key = set_value_parts[0]
+                                            else:
+                                                dict_key = subset_parts[0]
+                                                # figure out filter parts
+                                                temp = subset_parts[1][0:-1].split('=')
+                                                filter_key = temp[0]
+                                                filter_value = temp[1]
+
+                                            if isinstance(select_base_data_dict[dict_key], list):
+                                                # find the correct row in the list, based on the filter that is in the configuration
+                                                the_value = ''
+                                                for the_dict in select_base_data_dict[dict_key]:
+                                                    if the_dict[filter_key] == filter_value:
+                                                        the_value = the_dict['#text']
+                                                        break
+                                                set_data[set_key] = the_value
+                                                # print(the_value)
+                                            else:
+                                                set_data[set_key] = select_base_data_dict[set_value_parts[0]][
+                                                    '#' + set_value_parts[1]]
+                                        else:
+                                            set_value_parts = set_value.split('@')
+                                            if len(set_value_parts) == 2:
+                                                set_data[set_key] = select_base_data_dict[set_value_parts[0]][
+                                                    '@' + set_value_parts[1]]
+                                            else:
+                                                set_data[set_key] = select_base_data_dict[set_value]
+                                        # set_value_parts = set_value.split('@')
+
+                                # Add the resulting set_data dict to the list
+                                the_entire_list.append(set_data)
+
+                        # Add the entire resulting list to the key as used within ckan
+                        ckan_package_dict[ckan_base_key] = the_entire_list
+
+                    else:
+                        # no explicit SET definition. List can be used directly as is.
+                        ckan_package_dict[ckan_base_key] = select_base_data
+
+
+            except KeyError:
+                log.info("key error: " + ckan_base_key)
+                # Go to next in the loop
+                continue
+
+        return ckan_package_dict
+
+###########################################################
+### Deze worden niet meer ingezet. Daarom hoeft content['mode']  niet geinitialiseerd te worden en kan verdwijnen
+###########################################################
     def _handleMaintainer(self, content, context):
         if content['mode'] == 'ILAB':
             self.package_dict['maintainer'] = 'Utrecht University'
@@ -541,7 +713,6 @@ class OaipmhHarvester(HarvesterBase):
                                             context)
             )
         self.package_dict['groups'] = groups
-
 
     def _handleTags(self, content, context):
         if content['mode'] == 'ILAB':
@@ -642,6 +813,8 @@ class OaipmhHarvester(HarvesterBase):
                 extras.append(
                     ('Publication date', content['publicationYear'][0]))
 
+
+
             # Fetch extra external information regarding supplement on DOI
             urlDoiBaseGFZ = self.collect_extra_info_from_gfz
 
@@ -710,9 +883,6 @@ class OaipmhHarvester(HarvesterBase):
 
         self.package_dict['extras'] = [ { "key": k, "value": v } for (k, v) in extras ]
 
-    # handle data where metadata prefix = iso - to be defined yet
-    def _handle_iso(self, content, context):
-        return False  # not yet implemented
 
     # Handle data where metadata prefix in
     # (dif, oai_dc, oai_ddi) -> this is not EPOS oriented
