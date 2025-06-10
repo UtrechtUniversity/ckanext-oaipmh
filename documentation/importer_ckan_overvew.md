@@ -99,7 +99,7 @@ Each harvest sources defines how exactly a specific endpoint can be harvested th
 
 Given a user 'harvest' and a (default) organization , under the sysadm-settings, a new menu item 'Harvest' becomes availabe:
 
-<img src="/images/sysadmin_settings.png" alt="Sysadmin settings">
+<img src="images/sysadmin_settings.png" alt="Sysadmin settings">
 
 The addition of the new OAIPMH-module will introduce some extra screens that deal with:
 - List of all known harvest sources  
@@ -114,7 +114,7 @@ The addition of the new OAIPMH-module will introduce some extra screens that dea
 #### Harvest source form
 Creation or editing of a harvest source configuration can be done by the following form:  
 
-<img src="/images/harvest_source_form.png" alt="Harvest source form">
+<img src="images/harvest_source_form.png" alt="Harvest source form">
 
 In this form you can enter:
 
@@ -155,7 +155,7 @@ In order to bring things in motion a specific harvast source needs to be started
 This can be an automated repetitive job (as indicated within the harvest source itself).  
 A manual kickoff is possible as well.
 
-<img src="/images/harvest_source_start.png" alt="Start harvest source">
+<img src="images/harvest_source_start.png" alt="Start harvest source">
 
 Pressing the Reharvest button will start the harvesting-process utilizing the configuration as set within the harvest source.
 
